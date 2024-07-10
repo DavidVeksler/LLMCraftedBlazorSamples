@@ -1,0 +1,164 @@
+﻿@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Data.Models
+@inject PayTechDbContext _dbContext
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Transaction Details</h4>
+
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Transaction ID:</div>
+            <div class="col-7 col-md-9">@transaction?.TransactionId</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Customer ID:</div>
+            <div class="col-7 col-md-9">@transaction?.CustomerId</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Payment Amount:</div>
+            <div class="col-7 col-md-9">@transaction?.PaymentAmount</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Payout Amount:</div>
+            <div class="col-7 col-md-9">@transaction?.PayoutAmount</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Deposit Currency:</div>
+            <div class="col-7 col-md-9">@transaction?.DepositCurrency</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Payout Currency:</div>
+            <div class="col-7 col-md-9">@transaction?.PayoutCurrency</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Fee USD:</div>
+            <div class="col-7 col-md-9">@transaction?.FeeUSD</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Transaction Type:</div>
+            <div class="col-7 col-md-9">@(transaction?.TransactionType.HasValue == true ? transaction.TransactionType.Value.ToString() : "-")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Transaction Status:</div>
+            <div class="col-7 col-md-9">@(transaction?.Status.HasValue == true ? transaction.Status.Value.ToString() : "-")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Created At:</div>
+            <div class="col-7 col-md-9">@(transaction?.CreatedAt.HasValue == true ? transaction.CreatedAt.Value.ToLocalTime().ToString("MM/dd/yyyy HH:mm") : "-")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Updated At:</div>
+            <div class="col-7 col-md-9">@(transaction?.UpdatedAt.HasValue == true ? transaction.UpdatedAt.Value.ToLocalTime().ToString("MM/dd/yyyy HH:mm") : "-")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Secret Key:</div>
+            <div class="col-7 col-md-9">@transaction?.SecretKey</div>
+        </div>
+
+    </div>
+</div>
+
+<h4 class="mt-4">Linked Records</h4>
+
+@foreach (var navigationProperty in EntityReflectionHelper.GetNavigationProperties(transaction))
+{
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">@navigationProperty.Name</h5>
+            @if (navigationProperty.GetValue(transaction) is IEnumerable<object> linkedRecords)
+            {
+                @if (linkedRecords.Any())
+                {
+                    @foreach (var record in linkedRecords)
+                    {
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                @foreach (var property in EntityReflectionHelper.GetProperties(record))
+                                {
+                                    <div class="row mb-2">
+                                        <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                        <div class="col-7 col-md-9">@property.GetValue(record)</div>
+                                    </div>
+                                }
+                                @foreach (var nestedNavigationProperty in EntityReflectionHelper.GetNavigationProperties(record))
+                                {
+                                    <h6 class="mt-3">@nestedNavigationProperty.Name</h6>
+                                    @if (nestedNavigationProperty.GetValue(record) is IEnumerable<object> nestedLinkedRecords)
+                                    {
+                                        @if (nestedLinkedRecords.Any())
+                                        {
+                                            @foreach (var nestedRecord in nestedLinkedRecords)
+                                            {
+                                                <div class="card mb-2">
+                                                    <div class="card-body">
+                                                        @foreach (var property in EntityReflectionHelper.GetProperties(nestedRecord))
+                                                        {
+                                                            <div class="row mb-1">
+                                                                <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                                                <div class="col-7 col-md-9">@property.GetValue(nestedRecord)</div>
+                                                            </div>
+                                                        }
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">No records found.</p>
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted">No records found.</p>
+                                    }
+                                }
+                            </div>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <p class="text-muted">No records found.</p>
+                }
+            }
+            else
+            {
+                <p class="text-muted">No records found.</p>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    private Transaction? transaction;
+
+    [Parameter] public int TransactionId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactionAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadTransactionAsync();
+    }
+
+    private async Task LoadTransactionAsync()
+    {
+        transaction = await _dbContext.Transactions
+            // .Include(t => t.CustomerDeposits)
+            .Include(t => t.Pin4Payouts)
+            .Include(t => t.TransactionErrors)
+            .Include(t => t.CryptoPaymentInvoices)
+            .FirstOrDefaultAsync(t => t.TransactionId == TransactionId);
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        transaction = null;
+    }
+
+
+}

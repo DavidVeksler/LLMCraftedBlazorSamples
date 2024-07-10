@@ -1,0 +1,181 @@
+@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Data.Models
+@inject PayTechDbContext _dbContext
+
+<div class="card">
+    <div class="card-body">
+        <h4 class="card-title">Transaction Error Details</h4>
+
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Error ID:</div>
+            <div class="col-7 col-md-9">@transactionError?.ErrorId</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Transaction ID:</div>
+            <div class="col-7 col-md-9">@transactionError?.TransactionId</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Server Error Message:</div>
+            <div class="col-7 col-md-9">@transactionError?.ServerErrorMessage</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Internal Note:</div>
+            <div class="col-7 col-md-9">@transactionError?.InternalNote</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Customer Message:</div>
+            <div class="col-7 col-md-9">@transactionError?.CustomerMessage</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Error DateTime:</div>
+            <div class="col-7 col-md-9">@transactionError?.ErrorDateTime.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Created At:</div>
+            <div class="col-7 col-md-9">@(transactionError?.CreatedAt?.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss") ?? "-")</div>
+        </div>
+        <div class="row">
+            <div class="col-5 col-md-3 text-end">Updated At:</div>
+            <div class="col-7 col-md-9">@(transactionError?.UpdatedAt?.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss") ?? "-")</div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mt-4">Linked Records</h4>
+
+@if (transactionError != null)
+{
+    @foreach (var navigationProperty in EntityReflectionHelper.GetNavigationProperties(transactionError))
+    {
+        <div class="card mt-4">
+            <div class="card-body">
+                <h5 class="card-title">@navigationProperty.Name</h5>
+                @if (navigationProperty.GetValue(transactionError) is IEnumerable<object> linkedRecords)
+                {
+                    @if (linkedRecords.Any())
+                    {
+                        @foreach (var record in linkedRecords)
+                        {
+                            <div class="card mb-3">
+                                <div class="card-body">
+                                    @foreach (var property in EntityReflectionHelper.GetProperties(record))
+                                    {
+                                        <div class="row mb-2">
+                                            <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                            <div class="col-7 col-md-9">@property.GetValue(record)</div>
+                                        </div>
+                                    }
+                                    @foreach (var nestedNavigationProperty in EntityReflectionHelper.GetNavigationProperties(record))
+                                    {
+                                        <h6 class="mt-3">@nestedNavigationProperty.Name</h6>
+                                        @if (nestedNavigationProperty.GetValue(record) is IEnumerable<object> nestedLinkedRecords)
+                                        {
+                                            @if (nestedLinkedRecords.Any())
+                                            {
+                                                @foreach (var nestedRecord in nestedLinkedRecords)
+                                                {
+                                                    <div class="card mb-2">
+                                                        <div class="card-body">
+                                                            @foreach (var property in EntityReflectionHelper.GetProperties(nestedRecord))
+                                                            {
+                                                                <div class="row mb-1">
+                                                                    <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                                                    <div class="col-7 col-md-9">@property.GetValue(nestedRecord)</div>
+                                                                </div>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p class="text-muted">No records found.</p>
+                                            }
+                                        }
+                                        else if (nestedNavigationProperty.GetValue(record) is object singleNestedRecord)
+                                        {
+                                            <div class="card mb-2">
+                                                <div class="card-body">
+                                                    @foreach (var property in EntityReflectionHelper.GetProperties(singleNestedRecord))
+                                                    {
+                                                        <div class="row mb-1">
+                                                            <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                                            <div class="col-7 col-md-9">@property.GetValue(singleNestedRecord)</div>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <p class="text-muted">No records found.</p>
+                                        }
+                                    }
+                                </div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-muted">No records found.</p>
+                    }
+                }
+                else if (navigationProperty.GetValue(transactionError) is object singleRecord)
+                {
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            @foreach (var property in EntityReflectionHelper.GetProperties(singleRecord))
+                            {
+                                <div class="row mb-2">
+                                    <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
+                                    <div class="col-7 col-md-9">@property.GetValue(singleRecord)</div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                }
+                else
+                {
+                    <p class="text-muted">No records found.</p>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private TransactionError transactionError;
+
+    [Parameter] public int ErrorId { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactionErrorAsync();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadTransactionErrorAsync();
+    }
+
+    private async Task LoadTransactionErrorAsync()
+    {
+        transactionError = await _dbContext.TransactionErrors
+            .Include(te => te.Transaction)
+            .FirstOrDefaultAsync(te => te.ErrorId == ErrorId);
+    
+        if (transactionError == null)
+        {
+            // Handle the case when no error is found
+            // For example, you could set an error message to display
+        }
+    
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        transactionError = null;
+    }
+
+}
