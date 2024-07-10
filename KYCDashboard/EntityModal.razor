@@ -1,0 +1,112 @@
+﻿@typeparam TEntity
+
+<div class="modal" tabindex="-1" style="display: @(_isOpen ? "block" : "none")">
+    <div class="modal-dialog modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">@Title</h5>
+                <button type="button" class="btn-close" @onclick="CloseModal"></button>
+            </div>
+            <div class="modal-body">
+                @foreach (var property in EntityReflectionHelper.GetProperties(Entity))
+                {
+                    <div class="row">
+                        <div class="col-5 col-md-3 text-end">@property.Name:</div>
+                        <div class="col-7 col-md-9">@property.GetValue(Entity)</div>
+                    </div>
+                }
+
+                <h4>Linked Records</h4>
+
+                @foreach (var navigationProperty in EntityReflectionHelper.GetNavigationProperties(Entity))
+                {
+                    <h5>@navigationProperty.Name</h5>
+                    @if (navigationProperty.GetValue(Entity) is IEnumerable<object> linkedRecords)
+                    {
+                        @if (linkedRecords.Any())
+                        {
+                            @foreach (var record in linkedRecords)
+                            {
+                                <div class="card mb-3">
+                                    <div class="card-body">
+                                        @foreach (var property in EntityReflectionHelper.GetProperties(record))
+                                        {
+                                            <div class="row">
+                                                <div class="col-5 col-md-3 text-end">@property.Name:</div>
+                                                <div class="col-7 col-md-9">@property.GetValue(record)</div>
+                                            </div>
+                                        }
+                                        @foreach (var nestedNavigationProperty in EntityReflectionHelper.GetNavigationProperties(record))
+                                        {
+                                            <h6>@nestedNavigationProperty.Name</h6>
+                                            @if (nestedNavigationProperty.GetValue(record) is IEnumerable<object> nestedLinkedRecords)
+                                            {
+                                                @if (nestedLinkedRecords.Any())
+                                                {
+                                                    @foreach (var nestedRecord in nestedLinkedRecords)
+                                                    {
+                                                        <div class="card mb-2">
+                                                            <div class="card-body">
+                                                                @foreach (var property in EntityReflectionHelper.GetProperties(nestedRecord))
+                                                                {
+                                                                    <div class="row">
+                                                                        <div class="col-5 col-md-3 text-end">@property.Name:</div>
+                                                                        <div class="col-7 col-md-9">@property.GetValue(nestedRecord)</div>
+                                                                    </div>
+                                                                }
+                                                            </div>
+                                                        </div>
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <p>No records found.</p>
+                                                }
+                                            }
+                                            else
+                                            {
+                                                <p>No records found.</p>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        }
+                        else
+                        {
+                            <p>No records found.</p>
+                        }
+                    }
+                    else
+                    {
+                        <p>No records found.</p>
+                    }
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @onclick="CloseModal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    [Parameter] public string Title { get; set; } = "Entity Details";
+    [Parameter] public TEntity Entity { get; set; }
+    [Parameter] public bool IsOpen { get; set; }
+    [Parameter] public EventCallback<bool> IsOpenChanged { get; set; }
+
+    private bool _isOpen;
+
+    protected override void OnParametersSet()
+    {
+        _isOpen = IsOpen;
+    }
+
+    private async Task CloseModal()
+    {
+        _isOpen = false;
+        await IsOpenChanged.InvokeAsync(_isOpen);
+    }
+
+}

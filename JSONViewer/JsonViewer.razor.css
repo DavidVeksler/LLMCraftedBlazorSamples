@@ -1,0 +1,11 @@
+﻿.json-viewer {
+    background-color: #f9f9f9;
+    font-family: monospace;
+    margin: 10px;
+    padding: 10px;
+    white-space: pre;
+}
+
+.json-object, .json-array { margin-left: 20px; }
+
+.json-property, .json-array-item { margin-bottom: 5px; }

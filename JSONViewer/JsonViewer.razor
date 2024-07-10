@@ -1,0 +1,93 @@
+﻿@using System.Text.Json
+
+<div class="json-viewer p-3 bg-light border rounded">
+    @RenderJson(JsonData)
+</div>
+
+@code {
+    [Parameter] public JsonElement JsonData { get; set; }
+
+    private RenderFragment RenderJson(JsonElement element)
+    {
+        return builder =>
+        {
+            var seq = 0;
+            switch (element.ValueKind)
+            {
+                case JsonValueKind.Object:
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "json-object ms-3");
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "text-muted");
+                    builder.AddContent(seq++, "{");
+                    builder.CloseElement();
+                    foreach (var prop in element.EnumerateObject())
+                    {
+                        builder.OpenElement(seq++, "div");
+                        builder.AddAttribute(seq++, "class", "json-property");
+                        builder.OpenElement(seq++, "span");
+                        builder.AddAttribute(seq++, "class", "json-key text-danger");
+                        builder.AddContent(seq++, prop.Name);
+                        builder.CloseElement();
+                        builder.AddContent(seq++, ": ");
+                        builder.AddContent(seq++, RenderJson(prop.Value));
+                        builder.CloseElement();
+                    }
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "text-muted");
+                    builder.AddContent(seq++, "}");
+                    builder.CloseElement();
+                    builder.CloseElement();
+                    break;
+                case JsonValueKind.Array:
+                    builder.OpenElement(seq++, "div");
+                    builder.AddAttribute(seq++, "class", "json-array ms-3");
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "text-muted");
+                    builder.AddContent(seq++, "[");
+                    builder.CloseElement();
+                    var index = 0;
+                    foreach (var item in element.EnumerateArray())
+                    {
+                        builder.OpenElement(seq++, "div");
+                        builder.AddAttribute(seq++, "class", "json-array-item");
+                        builder.AddContent(seq++, RenderJson(item));
+                        builder.CloseElement();
+                        if (index++ < element.GetArrayLength() - 1)
+                            builder.AddContent(seq++, ",");
+                    }
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "text-muted");
+                    builder.AddContent(seq++, "]");
+                    builder.CloseElement();
+                    builder.CloseElement();
+                    break;
+                case JsonValueKind.String:
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "json-string text-success");
+                    builder.AddContent(seq++, $"\"{element.GetString()}\"");
+                    builder.CloseElement();
+                    break;
+                case JsonValueKind.Number:
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "json-number text-primary");
+                    builder.AddContent(seq++, element.GetRawText());
+                    builder.CloseElement();
+                    break;
+                case JsonValueKind.True:
+                case JsonValueKind.False:
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "json-boolean text-warning");
+                    builder.AddContent(seq++, element.GetBoolean().ToString().ToLower());
+                    builder.CloseElement();
+                    break;
+                case JsonValueKind.Null:
+                    builder.OpenElement(seq++, "span");
+                    builder.AddAttribute(seq++, "class", "json-null text-muted");
+                    builder.AddContent(seq++, "null");
+                    builder.CloseElement();
+                    break;
+            }
+        };
+    }
+}

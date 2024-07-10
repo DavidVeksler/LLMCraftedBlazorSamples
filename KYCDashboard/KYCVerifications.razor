@@ -1,0 +1,261 @@
+﻿@page "/kyc"
+@using System.Text.Json
+@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.BackOfficeWeb.Components.Pages.KYC
+@using PayTech.BackOffice.BackOfficeWeb.Components.Shared
+@using PayTech.BackOffice.Data.Authentication
+@using PayTech.BackOffice.Data.Models
+@using PayTech.BackOffice.Data.Types
+
+@rendermode InteractiveServer
+@inject PayTechDbContext _dbContext
+@inject UserDbContext _usersContext
+
+<h3>Customer KYC Verifications</h3>
+
+<EntityModal TEntity="CustomerKycVerification" IsOpen="@_isModalOpen" IsOpenChanged="@HandleModalOpenChanged" />
+<Modal @ref="ApplicationUserModal" />
+
+<div class="row mt-3 mb-5">
+    <StatCard Title="Total KYC Verifications" Icon="bi bi-person-check"
+              Value="@(_dbContext.CustomerKycVerifications.Count())" />
+
+    <StatCard Title="Verifications Today" Icon="bi bi-calendar-check"
+              Value="@(_dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Date == DateTime.Today))"
+              BackgroundColor="bg-success" />
+
+    <StatCard Title="Unique Countries" Icon="bi bi-globe"
+              Value="@(_dbContext.CustomerKycVerifications.Select(k => k.Country).Distinct().Count())"
+              BackgroundColor="bg-info" />
+
+    <StatCard Title="Most Common Country" Icon="bi bi-flag"
+              Value="@(_dbContext.CustomerKycVerifications.GroupBy(k => k.Country).ToList().OrderByDescending(g => g.Count()).FirstOrDefault()?.Count() ?? 0)"
+              BackgroundColor="bg-warning" TextColor="text-dark" />
+
+    <StatCard Title="Avg. Verification Age" Icon="bi bi-clock-history"
+              Value="@((int)_dbContext.CustomerKycVerifications.Where(k => k.CreatedAt.HasValue).Select(k => (DateTime.Now - k.CreatedAt!.Value).Days).DefaultIfEmpty().Average())"
+              BackgroundColor="bg-danger" />
+
+    <StatCard Title="Unique Customers" Icon="bi bi-person-bounding-box"
+              Value="@(_dbContext.CustomerKycVerifications.Select(k => k.CustomerId).Distinct().Count())"
+              BackgroundColor="bg-secondary" />
+
+    <StatCard Title="Monthly Growth Rate" Icon="bi bi-graph-up"
+              Value="@(CalculateMonthlyGrowthRate())"
+              BackgroundColor="bg-dark" />
+
+    <StatCard Title="Avg. Customer Age" Icon="bi bi-calendar3"
+              Value="@((int)_dbContext.CustomerKycVerifications.Where(k => k.Dob.HasValue).Select(k => (DateTime.Today - k.Dob!.Value.ToDateTime(TimeOnly.MinValue)).Days / 365.25).DefaultIfEmpty().Average())"
+              BackgroundColor="bg-light" TextColor="text-dark" />
+
+    <StatCard Title="Duplicate Emails" Icon="bi bi-exclamation-triangle"
+              Value="@(_usersContext.Users.GroupBy(u => u.Email).Count(g => g.Count() > 1))"
+              BackgroundColor="bg-warning" TextColor="text-dark"
+              OnClick="@(() => ShowDuplicateDetails(DuplicateType.Email))" />
+
+    <StatCard Title="Duplicate Phone Numbers" Icon="bi bi-telephone-x"
+              Value="@(_usersContext.Users.GroupBy(u => u.PhoneNumber).Count(g => g.Count() > 1))"
+              BackgroundColor="bg-warning" TextColor="text-dark"
+              OnClick="@(() => ShowDuplicateDetails(DuplicateType.Phone))" />
+
+    <StatCard Title="Duplicate IP Addresses" Icon="bi bi-hdd-network"
+              Value="@(_dbContext.CustomerKycVerifications.GroupBy(k => k.IpAddress).Count(g => g.Count() > 1))"
+              BackgroundColor="bg-warning" TextColor="text-dark"
+              OnClick="@(() => ShowDuplicateDetails(DuplicateType.IP))" />
+
+    <StatCard Title="Failed Verifications" Icon="bi bi-x-circle"
+              Value="@(_dbContext.CustomerKycVerifications.Count(k => k.Status == KycStatus.AMLFailed || k.Status == KycStatus.DocumentationFailed))"
+              BackgroundColor="bg-danger" OnClick="ShowFailedVerifications" />
+</div>
+
+@code {
+
+    private int CalculateMonthlyGrowthRate()
+    {
+        var thisMonth = _dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.Month && k.CreatedAt.Value.Year == DateTime.Now.Year);
+        var lastMonth = _dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.AddMonths(-1).Month && k.CreatedAt.Value.Year == DateTime.Now.AddMonths(-1).Year);
+        return lastMonth > 0 ? (int)(((double)thisMonth - lastMonth) / lastMonth * 100) : 0;
+    }
+
+}
+
+
+<Grid TItem="CustomerKycVerification"
+      Class="table table-hover table-bordered table-striped"
+      DataProvider="KycVerificationsDataProvider"
+      AllowFiltering="true"
+      AllowPaging="true"
+      PageSize="50"
+      AllowSorting="true"
+      Responsive="true">
+    <GridColumn TItem="CustomerKycVerification" HeaderText="KYC ID" PropertyName="KycId" SortKeySelector="item => item.KycId">
+        <Button Color="ButtonColor.Link" @onclick="() => ShowKycDetails(context.KycId)">@context.KycId</Button>
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Customer ID" PropertyName="CustomerId">
+        <Button Color="ButtonColor.Link" @onclick="() => ShowApplicationUser(context.CustomerId)">@context.ApplicationUser.ToString()</Button>
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="First Name" PropertyName="FirstName">
+        @context.FirstName
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Last Name" PropertyName="LastName">
+        @context.LastName
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Date of Birth" PropertyName="Dob" SortKeySelector="item => item.Dob">
+        @(context.Dob?.ToString("MM/dd/yyyy"))
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Postal Code" PropertyName="PostalCode">
+        @context.PostalCode
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Country" PropertyName="Country">
+        @context.Country
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="AML Response" PropertyName="AMLResponse">
+        @if (!string.IsNullOrEmpty(context.AMLResponse))
+        {
+            <JsonViewer JsonData="@(JsonSerializer.Deserialize<JsonElement>(context.AMLResponse))"></JsonViewer>
+        }
+    </GridColumn>
+
+    <GridColumn TItem="CustomerKycVerification" HeaderText="ID Verification Response" PropertyName="IDVerificationResponse">
+        @if (!string.IsNullOrEmpty(context.IDVerificationResponse))
+        {
+            <JsonViewer JsonData="@(JsonSerializer.Deserialize<JsonElement>(context.IDVerificationResponse))"></JsonViewer>
+        }
+    </GridColumn>
+
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Created At" PropertyName="CreatedAt" SortKeySelector="item => item.CreatedAt">
+        @(context.CreatedAt?.ToString("MM/dd/yyyy HH:mm"))
+    </GridColumn>
+    <GridColumn TItem="CustomerKycVerification" HeaderText="Updated At" PropertyName="UpdatedAt" SortKeySelector="item => item.UpdatedAt">
+        @(context.UpdatedAt?.ToString("MM/dd/yyyy HH:mm"))
+    </GridColumn>
+</Grid>
+
+@code {
+    private bool _isModalOpen;
+
+
+    private Modal ApplicationUserModal = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+    }
+
+
+    private async Task ShowKycDetails(int kycId)
+    {
+        _isModalOpen = true;
+    }
+
+    private void HandleModalOpenChanged(bool isOpen)
+    {
+        _isModalOpen = isOpen;
+    }
+
+    private async Task<GridDataProviderResult<CustomerKycVerification>> KycVerificationsDataProvider(GridDataProviderRequest<CustomerKycVerification> request)
+    {
+        var kycVerifications = _dbContext.CustomerKycVerifications
+            .Include(t => t.ApplicationUser)
+            .OrderByDescending(k => k.UpdatedAt ?? k.CreatedAt)
+            .ToList();
+        return await Task.FromResult(request.ApplyTo(kycVerifications));
+    }
+
+    private async Task ShowApplicationUser(string customerId)
+    {
+        var parameters = new Dictionary<string, object>();
+        parameters.Add("CustomerId", customerId);
+
+        await ApplicationUserModal.ShowAsync<CustomerProfileModal>($"Customer {customerId} Details", parameters: parameters);
+    }
+
+
+    private async Task ShowFailedVerifications()
+    {
+        var failedVerifications = _dbContext.CustomerKycVerifications
+            .Where(k => k.Status == KycStatus.AMLFailed || k.Status == KycStatus.DocumentationFailed)
+            .Include(k => k.ApplicationUser)
+            .ToList();
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "FailedVerifications", failedVerifications }
+        };
+
+        await ApplicationUserModal.ShowAsync<FailedVerificationsModal>("Failed Verifications", parameters: parameters);
+    }
+
+    private List<DuplicateItem> GetDuplicateEmails()
+    {
+        return _usersContext.Users
+            .GroupBy(u => u.Email)
+            .Where(g => g.Count() > 1)
+            .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })
+            .ToList();
+    }
+
+    private List<DuplicateItem> GetDuplicatePhones()
+    {
+        return _usersContext.Users
+            .GroupBy(u => u.PhoneNumber)
+            .Where(g => g.Count() > 1)
+            .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })
+            .ToList();
+    }
+
+    private List<DuplicateItem> GetDuplicateIPs()
+    {
+        return _dbContext.CustomerKycVerifications
+            .GroupBy(k => k.IpAddress)
+            .Where(g => g.Count() > 1)
+            .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })
+            .ToList();
+    }
+
+    public class DuplicateItem
+    {
+        public string Value { get; set; }
+        public int Count { get; set; }
+    }
+
+    private enum DuplicateType
+    {
+        Email,
+        Phone,
+        IP
+    }
+
+    private async Task ShowDuplicateDetails(DuplicateType type)
+    {
+        List<DuplicateItem> duplicates;
+        string title;
+
+        switch (type)
+        {
+            case DuplicateType.Email:
+                duplicates = GetDuplicateEmails();
+                title = "Duplicate Emails";
+                break;
+            case DuplicateType.Phone:
+                duplicates = GetDuplicatePhones();
+                title = "Duplicate Phone Numbers";
+                break;
+            case DuplicateType.IP:
+                duplicates = GetDuplicateIPs();
+                title = "Duplicate IP Addresses";
+                break;
+            default:
+                return;
+        }
+
+        var parameters = new Dictionary<string, object>
+        {
+            { "Duplicates", duplicates },
+            { "Title", title }
+        };
+
+        await ApplicationUserModal.ShowAsync<DuplicateDetailsModal>(title, parameters: parameters);
+    }
+
+}

@@ -1,0 +1,444 @@
+﻿@page "/bitpay-payments"
+
+@inject IConfiguration Configuration
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using System.Collections
+@using System.Reflection
+@using System.Text
+@using System.Text.RegularExpressions
+@using BitPay.Models.Invoice
+@using Newtonsoft.Json.Linq
+@using PayTech.BackOffice.Data.Authentication
+@using PayTech.BackOffice.Services.Bitpay
+@using Environment = BitPay.Environment;
+@inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
+<script>
+    window.bitpay = bitpay;
+    window.addEventListener("message",
+        function(event) {
+            const payment_status = event.data.status;
+            if (payment_status == "paid") {
+                // Take action when the invoice is paid
+                console.log("Invoice paid");
+            }
+        },
+        false);
+
+
+    bitpay.onModalWillEnter(function() {
+        console.log('bitpay modal is opening');
+    });
+
+    bitpay.onModalWillLeave(function() {
+        console.log('bitpay modal is closing');
+    });
+
+</script>
+
+<div class="container">
+    <div class="row mt-4 mb-4">
+        <div class="col-md-6">
+            <h1 class="my-4">BitPay Payments</h1>
+        </div>
+
+        <div>
+            <h4>Links:</h4>
+            <ul>
+                <li>
+                    <a href="https://bitpay.com/dashboard/">Prod Dashboard</a>
+                </li>
+                <li>
+                    <a href="https://test.bitpay.com/dashboard/">Test Dashboard</a>
+                </li>
+                <li>
+                    <a href="https://developer.bitpay.com/docs/api-integrations-additional-information">API Documentation</a>
+                </li>
+            </ul>
+        </div>
+
+        <div class="col-md-6 text-end">
+            <div class="form-check form-switch">
+                <input type="checkbox" class="form-check-input" id="environmentSwitch" @onchange="ToggleEnvironment"/>
+                <label class="form-check-label" for="environmentSwitch">@(isProdEnvironment ? "Production" : "Test") Environment</label>
+            </div>
+        </div>
+    </div>
+
+    <Notification Message="@NotificationMessage" Type="@NotificationType" Duration="3000"/>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Create Invoice</h2>
+                </div>
+                <div class="card-body">
+                    <EditForm Model="@createInvoiceRequest" OnValidSubmit="CreateInvoice">
+                        <DataAnnotationsValidator/>
+                        <ValidationSummary/>
+
+                        <div class="mb-3">
+                            <label for="orderId" class="form-label">Order ID:</label>
+                            <InputText id="orderId" class="form-control" @bind-Value="createInvoiceRequest.OrderId"/>
+                        </div>
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description:</label>
+                            <InputText id="description" class="form-control" @bind-Value="createInvoiceRequest.Description"/>
+                        </div>
+                        <div class="mb-3">
+                            <label for="amount" class="form-label">Amount:</label>
+                            <InputNumber id="amount" class="form-control" @bind-Value="createInvoiceRequest.Amount"/>
+                            <ValidationMessage For="@(() => createInvoiceRequest.Amount)"/>
+                        </div>
+                        <div class="mb-3">
+                            <label for="notificationEmail" class="form-label">Notification Email:</label>
+                            <InputText id="notificationEmail" class="form-control" @bind-Value="createInvoiceRequest.NotificationEmail"/>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Create Invoice</button>
+                    </EditForm>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h2>Get Invoice</h2>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label for="invoiceIdToGet" class="form-label">Invoice ID:</label>
+                        <InputText id="invoiceIdToGet" class="form-control" @bind-Value="invoiceIdToGet"/>
+                    </div>
+                    <button class="btn btn-primary" @onclick="GetInvoice">Get Invoice</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h2>Invoices</h2>
+                </div>
+                <div class="card-body">
+                    @if (invoices != null && invoices.Any())
+                    {
+                        <ul class="list-group">
+                            @foreach (var invoice in invoices.Where(i => i.Status != BitpayInvoiceState.Expired.ToString().ToLower()))
+                            {
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    @invoice.Id - @invoice.ItemDesc - @invoice.Status
+                                    @if (invoice.Status != BitpayInvoiceState.Expired.ToString().ToLower())
+                                    {
+                                        <div>
+                                            <button class="btn btn-danger" @onclick="() => CancelInvoice(invoice.Id)">Cancel</button>
+                                            <button class="btn btn-primary" @onclick="() => PayInvoice(invoice.Id)">Pay Invoice</button>
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>No invoices to display.</p>
+                    }
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h2>All Invoices</h2>
+                </div>
+                <div class="card-body">
+                    <button class="btn btn-primary" @onclick="GetAllInvoices">Get All Invoices</button>
+                    @if (invoices != null && invoices.Any())
+                    {
+                        <ul class="list-group mt-3">
+                            @foreach (var invoice in invoices)
+                            {
+                                <li class="list-group-item">
+                                    <p>
+                                        <strong>ID:</strong> @invoice.Id
+                                    </p>
+                                    <p>
+                                        <strong>Description:</strong> @invoice.ItemDesc
+                                    </p>
+                                    <p>
+                                        <strong>Amount:</strong> @invoice.Price @invoice.Currency
+                                    </p>
+                                    <p>
+                                        <strong>Status:</strong> @invoice.Status
+                                    </p>
+                                    @if (invoice.Status != BitpayInvoiceState.Expired.ToString().ToLower())
+                                    {
+                                        <div>
+                                            <button class="btn btn-primary" @onclick="() => PayInvoice(invoice.Id)">Pay</button>
+                                        </div>
+                                    }
+                                </li>
+                            }
+                        </ul>
+                    }
+                    else
+                    {
+                        <p>No invoices found.</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="row mt-4">
+        <div class="col">
+            <h2>Results</h2>
+            @foreach (var invoice in new[] { createdInvoice, retrievedInvoice })
+            {
+                if (invoice != null)
+                {
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3>@(invoice == createdInvoice ? "Created Invoice" : "Retrieved Invoice")</h3>
+                        </div>
+                        @if (invoice.Status != BitpayInvoiceState.Expired.ToString().ToLower())
+                        {
+                            <div>
+                                <button class="btn btn-primary" @onclick="() => PayInvoice(invoice.Id)">Pay</button>
+                            </div>
+                        }
+                        <div class="card-body">
+                            @((MarkupString)RenderInvoiceProperties(invoice, new[] { "Id", "Status", "Price", "Currency", "Url" }))
+                        </div>
+                        <div class="card-body">
+                            @((MarkupString)RenderReflectedProperties(invoice, new[] { "Id", "Status", "Price", "Currency", "ItemDesc", "Url" }))
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@code {
+    private BitPayClient bitPayClient;
+    private bool isProdEnvironment = true;
+    private readonly CreateBitpayInvoiceRequest createInvoiceRequest = new();
+    private Invoice createdInvoice;
+    private Invoice retrievedInvoice;
+    private List<Invoice> invoices = new();
+    private string invoiceIdToGet = string.Empty;
+    private string NotificationMessage { get; set; }
+    private Notification.NotificationType NotificationType { get; set; }
+    private string errorMessage = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        CreateBitPayClient();
+        LoadInvoices();
+    }
+
+    private void CreateBitPayClient()
+    {
+        var environment = Configuration.GetSection("BitPay")["Environment"].StartsWith("Prod")
+            ? Environment.Prod
+            : Environment.Test;
+        bitPayClient = new BitPayClient(Configuration.GetSection("BitPay"), environment);
+    }
+
+    private async Task LoadInvoices()
+    {
+        try
+        {
+            invoices = await bitPayClient.GetInvoices(DateTime.Now.AddDays(-30), DateTime.Now);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error loading invoices: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private void ToggleEnvironment()
+    {
+        isProdEnvironment = !isProdEnvironment;
+        CreateBitPayClient();
+    }
+
+    private async Task PayInvoice(string bitpayInvoiceId)
+    {
+        try
+        {
+            if (!isProdEnvironment)
+            {
+                await JSRuntime.InvokeVoidAsync("bitpay.enableTestMode");
+            }
+
+            await JSRuntime.InvokeVoidAsync("bitpay.showInvoice", bitpayInvoiceId);
+            ShowNotification("Test payment initiated successfully.", Notification.NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error initiating test payment: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private async Task CreateInvoice()
+    {
+        try
+        {
+            var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            
+            createdInvoice = await bitPayClient.CreateInvoice(createInvoiceRequest, new ApplicationUser
+            {
+                FirstName = user.Identity.Name, Email = "systems@paytech.systems",
+            });
+            invoiceIdToGet = createdInvoice.Id;
+            
+            ShowNotification("Invoice created successfully.", Notification.NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error creating invoice: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private async Task GetInvoice()
+    {
+        try
+        {
+            retrievedInvoice = await bitPayClient.GetInvoice(invoiceIdToGet.Trim());
+            ShowNotification("Invoice retrieved successfully.", Notification.NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error retrieving invoice: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private async Task GetAllInvoices()
+    {
+        try
+        {
+            invoices = await bitPayClient.GetInvoices(DateTime.Now.AddDays(-30), DateTime.Now.AddDays(30));
+            ShowNotification("All invoices retrieved successfully.", Notification.NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error retrieving all invoices: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private async Task CancelInvoice(string invoiceId)
+    {
+        try
+        {
+            await bitPayClient.CancelInvoice(invoiceId);
+            invoices = invoices.Where(i => i.Id != invoiceId).ToList();
+            ShowNotification("Invoice canceled successfully.", Notification.NotificationType.Success);
+        }
+        catch (Exception ex)
+        {
+            SetErrorMessage($"Error canceling invoice: {ex.Message}\n{ex.InnerException?.Message}");
+        }
+    }
+
+    private void SetErrorMessage(string message)
+    {
+        errorMessage = message;
+        ShowNotification(errorMessage, Notification.NotificationType.Error);
+    }
+
+    private void ShowNotification(string message, Notification.NotificationType type)
+    {
+        NotificationMessage = message;
+        NotificationType = type;
+        StateHasChanged();
+    }
+
+}
+
+@functions
+{
+    private string FormatPropertyName(string name)
+    {
+        return string.Join(" ", Regex.Split(name, @"(?<!^)(?=[A-Z])"));
+    }
+
+    private string RenderReflectedProperties(object obj, string[] excludedProperties, int depth = 0)
+    {
+        var markup = new StringBuilder();
+        foreach (var property in obj.GetType().GetProperties())
+        {
+            if (!excludedProperties.Contains(property.Name))
+            {
+                var value = GetPropertyValue(obj, property);
+
+                if (value != null)
+                {
+                    var formattedValue = FormatValue(value);
+                    markup.Append($"<p style=\"margin-left: {depth * 20}px\"><strong>{FormatPropertyName(property.Name)}:</strong> {formattedValue}</p>");
+
+                    if (depth < 3 && value.GetType().IsClass && value.GetType() != typeof(string))
+                    {
+                        markup.Append(RenderReflectedProperties(value, excludedProperties, depth + 1));
+                    }
+                }
+            }
+        }
+
+        return markup.ToString();
+    }
+
+    private object GetPropertyValue(object obj, PropertyInfo property)
+    {
+        if (obj is JObject jObject)
+        {
+            return jObject[property.Name];
+        }
+
+        if (property.GetIndexParameters().Length > 0)
+        {
+            if (obj is IList list && list.Count > 0)
+            {
+                return property.GetValue(obj, new object[] { 0 });
+            }
+
+            return null;
+        }
+
+        return property.GetValue(obj);
+    }
+
+    private string FormatValue(object value)
+    {
+        var formattedValue = value.ToString().Length > 500 ? value.ToString().Substring(0, 500) + "..." : value.ToString();
+        if (IsUrl(formattedValue))
+        {
+            return $"<a href=\"{formattedValue}\" target=\"_blank\" class=\"btn btn-link\">{formattedValue}</a>";
+        }
+
+        return formattedValue;
+    }
+
+    private bool IsUrl(string value)
+    {
+        return !string.IsNullOrWhiteSpace(value) && (value.StartsWith("http://") || value.StartsWith("https://"));
+    }
+
+    private string RenderInvoiceProperties(object invoice, string[] properties)
+    {
+        var markup = new StringBuilder();
+        foreach (var propertyName in properties)
+        {
+            var property = invoice.GetType().GetProperty(propertyName);
+            if (property != null && property.GetValue(invoice) is { } value)
+            {
+                var formattedValue = IsUrl(value.ToString()) ? $"<a href=\"{value}\" target=\"_blank\" class=\"btn btn-link\">{value}</a>" : value.ToString();
+                markup.Append($"<p><strong>{FormatPropertyName(property.Name)}:</strong> {formattedValue}</p>");
+            }
+        }
+
+        return markup.ToString();
+    }
+}
