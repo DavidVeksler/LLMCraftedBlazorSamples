@@ -3,16 +3,20 @@ A curated collection of C# and Blazor code samples, components, and utilities ge
 
 ## Features
 
-- **Email Templates**: Customizable email templates for various use cases
-- **Localization Management**: Tools and patterns for efficient localization in Blazor apps
-- **Log Viewing**: Components for displaying and filtering application logs
-- **Blazor Components**: Reusable UI components built with Blazor and Bootstrap
-- **Utility Classes**: Helper classes and extension methods for common tasks
+- **EmailTemplates**: Customizable email templates for various use cases
+- **IISLogViewer**: Component for viewing and analyzing IIS log files
+- **JSONViewer**: Interactive JSON viewer and editor component
+- **KYCDashboard**: Dashboard for managing Know Your Customer (KYC) processes
+- **BitPayPaymentsTester**: Tools for testing and simulating BitPay payment flows
+- **StrikePaymentsTester**: Utilities for testing Strike payment integrations
+- **TransactionErrorReport**: Reporting tools for transaction error analysis
 
 ![Email Templates](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/EmailTemplates/Screenshot%202024-07-10%20103238.png?raw=true)
 ![Transaction Errors Report](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/TransactionErrorReport/Screenshot%202024-07-10%20111726.png?raw=true)
 ![Log Viewer](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/IISLogViewer/Screenshot%202024-07-10%20104726.png?raw=true)
-
+![Payments Tester](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/BitPayPaymentsTester/Screenshot%202024-07-10%20112645.png?raw=true)
+![KYC Dashboard](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/KYCDashboard/Screenshot%202024-07-10%20113700.png?raw=true)
+![JSON Viewer](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/JSONViewer/Screenshot%202024-07-10%20113159.png?raw=true)
 
 ## Getting Started
 
