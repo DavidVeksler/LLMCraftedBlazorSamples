@@ -9,6 +9,10 @@ A curated collection of C# and Blazor code samples, components, and utilities ge
 - **Blazor Components**: Reusable UI components built with Blazor and Bootstrap
 - **Utility Classes**: Helper classes and extension methods for common tasks
 
+![Email Templates](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/EmailTemplates/Screenshot%202024-07-10%20103238.png?raw=true)
+![Log Viewer](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/IISLogViewer/Screenshot%202024-07-10%20104726.png?raw=true)
+
+
 ## Getting Started
 
 To use these samples in your project:
