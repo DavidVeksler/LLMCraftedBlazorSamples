@@ -1,0 +1,374 @@
+﻿@page "/email-templates"
+@using PayTech.BackOffice.Data.Models
+@using PayTech.BackOffice.Services.Email
+@inject IEmailTemplateService EmailTemplateService
+@inject IJSRuntime JSRuntime
+@inject ICustomerEmailService CustomerEmailService
+
+<script>
+    function getEditorHtml(editorElement) {
+        return editorElement.innerText;
+    }
+
+    function updatePreview(html) {
+        const previewFrame = document.getElementById('previewFrame');
+        const previewDocument = previewFrame.contentDocument || previewFrame.contentWindow.document;
+        previewDocument.open();
+        previewDocument.write(html);
+        previewDocument.close();
+    }
+
+    function insertTextAtCursor(editorElement, text) {
+        if (document.getSelection) {
+            const sel = document.getSelection();
+            if (sel.getRangeAt && sel.rangeCount) {
+                const range = sel.getRangeAt(0);
+                range.deleteContents();
+                range.insertNode(document.createTextNode(text));
+            }
+        } else if (document.selection && document.selection.createRange) {
+            document.selection.createRange().text = text;
+        }
+        editorElement.focus();
+    }
+
+    function updateEditorContent(editorElement, content) {
+        editorElement.innerText = content;
+    }
+
+</script>
+
+<div class="container my-4">
+    <Toasts class="p-3" Messages="messages" Placement="ToastsPlacement.TopRight" />
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-primary">
+            <i class="bi bi-pencil-square me-2"></i> Email Template Editor
+        </h2>
+        <div>
+            <Button Color="ButtonColor.Success" @onclick="CreateNewTemplate" class="shadow-sm me-2">
+                <i class="bi bi-plus-circle me-2"></i> New Template
+            </Button>
+            <Button Color="ButtonColor.Info" @onclick="ShowTemplateVariablesModal" class="shadow-sm">
+                <i class="bi bi-code-square me-2"></i> Template Variables
+            </Button>
+            
+            <Button Color="ButtonColor.Warning" @onclick="ShowTestEmailModal" class="shadow-sm">
+                <i class="bi bi-envelope me-2"></i> Send Test Email
+            </Button>
+        </div>
+    </div>
+
+    @if (templates.Any())
+    {
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-primary text-white">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="bi bi-list me-2"></i> Templates</h5>
+                            <input type="text" class="form-control form-control-sm" placeholder="Search templates..." @bind="searchTerm" />
+                        </div>
+                    </div>
+                    <ul class="list-group list-group-flush">
+                        @foreach (var template in FilteredTemplates)
+                        {
+                            <li class="list-group-item d-flex justify-content-between align-items-center @(template == selectedTemplate ? "active" : "")"
+                                @onclick="() => SelectTemplate(template)">
+                                <div>
+                                    @template.TemplateName
+                                    <span class="badge bg-secondary rounded-pill ms-2">@template.Subject</span>
+                                </div>
+                                <span class="badge bg-primary rounded-pill">@template.Id</span>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            </div>
+            <div class="col-md-8">
+                @if (selectedTemplate != null)
+                {
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="templateName" class="form-label">
+                                    <i class="bi bi-type me-2"></i> Template Name
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="templateName" @bind="@selectedTemplate.TemplateName">
+                                    <Button Color="ButtonColor.Danger" @onclick="DeleteTemplate" class="shadow-sm">
+                                        <i class="bi bi-trash"></i>
+                                    </Button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="subject" class="form-label">
+                                    <i class="bi bi-envelope me-2"></i> Subject
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="subject" @bind="@selectedTemplate.Subject">
+                                    <Button Color="ButtonColor.Secondary" @onclick="InsertVariable" class="shadow-sm">
+                                        <i class="bi bi-code"></i>
+                                    </Button>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <ul class="nav nav-tabs" id="myTab" role="tablist">
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link active" id="home-tab" data-bs-toggle="tab" data-bs-target="#home" type="button" role="tab" aria-controls="home" aria-selected="true">Editor</button>
+                                    </li>
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile" type="button" role="tab" aria-controls="profile" aria-selected="false">Preview</button>
+                                    </li>
+                                </ul>
+                                <div class="tab-content border-start border-end border-bottom p-3" id="myTabContent">
+                                    <div class="tab-pane fade show active" id="home" role="tabpanel" aria-labelledby="home-tab">
+                                        <div id="htmlEditor" @ref="htmlEditor" class="form-control" contenteditable="true" style="height: 400px; overflow-y: auto;">
+                                            @selectedTemplate.HtmlBody
+                                        </div>
+                                    </div>
+                                    <div class="tab-pane fade" id="profile" role="tabpanel" aria-labelledby="profile-tab">
+                                        <iframe id="previewFrame" class="w-100" style="height: 400px;"></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer text-end">
+                            <Button Color="ButtonColor.Secondary" @onclick="UndoChanges" class="shadow-sm me-2">
+                                <i class="bi bi-arrow-counterclockwise me-2"></i> Undo Changes
+                            </Button>
+                            <Button Color="ButtonColor.Primary" @onclick="SaveTemplate" class="shadow-sm">
+                                <i class="bi bi-save me-2"></i> Save Template
+                            </Button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            No templates found. Click the "New Template" button to create one.
+        </div>
+    }
+</div>
+
+<Modal @ref="variablesModal">
+
+    <HeaderTemplate>
+        Template Variables
+    </HeaderTemplate>
+    <BodyTemplate>
+        <p>You can use the following variables in your templates:</p>
+        <ul>
+            <li><code>@@{{firstName}}</code> - Recipient's first name</li>
+            <li><code>@@{{lastName}}</code> - Recipient's last name</li>
+            <li><code>@@{{email}}</code> - Recipient's email address</li>
+            <li><code>@@{{orderNumber}}</code> - Order number</li>
+            <li><code>@@{{orderDate}}</code> - Order date</li>
+            <li><code>@@{{orderTotal}}</code> - Order total</li>
+        </ul>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideTemplateVariablesModal">Close</Button>
+    </FooterTemplate>
+
+</Modal>
+
+<Modal @ref="testEmailModal">
+    <HeaderTemplate>
+        Send Test Email
+    </HeaderTemplate>
+    <BodyTemplate>
+        <div class="mb-3">
+            <label for="testEmailAddress" class="form-label">Email Address</label>
+            <input type="email" class="form-control" id="testEmailAddress" @bind="testEmailData.EmailAddress" />
+        </div>
+        <div class="mb-3">
+            <label for="testFirstName" class="form-label">First Name</label>
+            <input type="text" class="form-control" id="testFirstName" @bind="testEmailData.FirstName" />
+        </div>
+        <div class="mb-3">
+            <label for="testLastName" class="form-label">Last Name</label>
+            <input type="text" class="form-control" id="testLastName" @bind="testEmailData.LastName" />
+        </div>
+        <div class="mb-3">
+            <label for="testOrderNumber" class="form-label">Order Number</label>
+            <input type="text" class="form-control" id="testOrderNumber" @bind="testEmailData.OrderNumber" />
+        </div>
+        <div class="mb-3">
+            <label for="testOrderDate" class="form-label">Order Date</label>
+            <input type="date" class="form-control" id="testOrderDate" @bind="testEmailData.OrderDate" />
+        </div>
+        <div class="mb-3">
+            <label for="testOrderTotal" class="form-label">Order Total</label>
+            <input type="number" class="form-control" id="testOrderTotal" @bind="testEmailData.OrderTotal" />
+        </div>
+    </BodyTemplate>
+    <FooterTemplate>
+        <Button Color="ButtonColor.Secondary" @onclick="HideTestEmailModal">Cancel</Button>
+        <Button Color="ButtonColor.Primary" @onclick="SendTestEmail">Send Test Email</Button>
+    </FooterTemplate>
+</Modal>
+
+@code {
+    private List<EmailTemplate> templates = new();
+    private EmailTemplate selectedTemplate;
+    private readonly List<ToastMessage> messages = new();
+    private Modal variablesModal;
+
+    private string searchTerm = "";
+    private ElementReference htmlEditor;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTemplates();
+    }
+
+    private async Task LoadTemplates()
+    {
+        templates = await EmailTemplateService.GetAllTemplatesAsync();
+        if (templates.Any())
+        {
+            selectedTemplate = templates.First();
+        }
+    }
+
+    private async Task SelectTemplate(EmailTemplate template)
+    {
+        selectedTemplate = template;
+        await JSRuntime.InvokeVoidAsync("updateEditorContent", htmlEditor, selectedTemplate.HtmlBody);
+        UpdatePreview();
+    }
+
+    private async Task SaveTemplate()
+    {
+        // Get the raw HTML content from the editor
+        selectedTemplate.HtmlBody = await JSRuntime.InvokeAsync<string>("getEditorHtml", htmlEditor);
+
+        if (selectedTemplate.Id == 0)
+        {
+            await EmailTemplateService.CreateTemplateAsync(selectedTemplate);
+            ShowMessage(ToastType.Success, "Template created successfully.");
+        }
+        else
+        {
+            await EmailTemplateService.UpdateTemplateAsync(selectedTemplate);
+            ShowMessage(ToastType.Success, "Template updated successfully.");
+        }
+
+        await LoadTemplates();
+        UpdatePreview();
+    }
+
+    private async Task DeleteTemplate()
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete the template \"{selectedTemplate.TemplateName}\"? This action cannot be undone.");
+
+        if (confirmed)
+        {
+            if (await EmailTemplateService.DeleteTemplateAsync(selectedTemplate))
+            {
+                ShowMessage(ToastType.Success, "Template deleted successfully.");
+                templates.Remove(selectedTemplate);
+                selectedTemplate = templates.FirstOrDefault();
+            }
+            else
+            {
+                ShowMessage(ToastType.Danger, "Failed to delete the template.");
+            }
+        }
+    }
+
+    private void CreateNewTemplate()
+    {
+        selectedTemplate = new EmailTemplate();
+    }
+
+    private void ShowMessage(ToastType toastType, string message)
+    {
+        messages.Add(new ToastMessage
+            {
+                Type = toastType,
+                Message = message,
+                AutoHide = true
+            });
+    }
+
+    private IEnumerable<EmailTemplate> FilteredTemplates => templates.Where(t =>
+        string.IsNullOrWhiteSpace(searchTerm) ||
+        t.TemplateName.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+        t.Subject.Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+    );
+
+    private async Task UpdatePreview()
+    {
+        var currentContent = await JSRuntime.InvokeAsync<string>("getEditorHtml", htmlEditor);
+        await JSRuntime.InvokeVoidAsync("updatePreview", currentContent);
+    }
+
+    private void UndoChanges()
+    {
+        SelectTemplate(selectedTemplate);
+    }
+
+    private void ShowTemplateVariablesModal()
+    {
+        variablesModal.ShowAsync();
+    }
+
+    private void HideTemplateVariablesModal()
+    {
+        variablesModal.HideAsync();
+    }
+
+    private void InsertVariable()
+    {
+        JSRuntime.InvokeVoidAsync("insertTextAtCursor", htmlEditor, "@{{orderNumber}}");
+    }
+
+    private void ShowTestEmailModal()
+    {
+        testEmailModal.ShowAsync();
+    }
+
+    private void HideTestEmailModal()
+    {
+        testEmailModal.HideAsync();
+    }
+
+
+    private Modal testEmailModal;
+    private TestEmailData testEmailData = new TestEmailData();
+
+    private async Task SendTestEmail()
+    {
+        if (string.IsNullOrWhiteSpace(testEmailData.EmailAddress))
+        {
+            ShowMessage(ToastType.Danger, "Please enter a valid email address.");
+            return;
+        }
+        var templateData = new TestEmailTemplateModel
+        {
+            FirstName = testEmailData.FirstName,
+            LastName = testEmailData.LastName,
+            Email = testEmailData.EmailAddress,
+            OrderNumber = testEmailData.OrderNumber,
+            OrderDate = testEmailData.OrderDate,
+            OrderTotal = testEmailData.OrderTotal
+        };
+        try
+        {
+            await CustomerEmailService.SendCustomerTemplatedEmailAsync(templateData.Email, selectedTemplate.TemplateName, templateData);
+            ShowMessage(ToastType.Success, "Test email sent successfully.");
+            HideTestEmailModal();
+        }
+        catch (Exception ex)
+        {
+            ShowMessage(ToastType.Danger, $"Failed to send test email: {ex.Message}");
+        }
+    }
+
+}
