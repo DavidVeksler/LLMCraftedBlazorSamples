@@ -1,3 +1,4 @@
+using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using System.IO;
 using System.Text.Json;
@@ -19,14 +20,28 @@ namespace PayTech.BackOffice.BackOfficeWeb.Controllers
         public IActionResult GetLogFiles(string webApp)
         {
             var logDirectory = Path.Combine(_logDirectory, webApp, "logs");
-
             if (!Directory.Exists(logDirectory))
             {
                 return NotFound("Log directory not found.");
             }
 
-            var logFiles = Directory.GetFiles(logDirectory, "*.log")
+            List<string> logFiles = Directory.GetFiles(logDirectory, "*.log")
                 .Select(Path.GetFileName)
+                .Where(fileName => fileName != null)
+                .OrderByDescending(fileName => 
+                {
+                    // Extract date from filename (assuming format: applicationYYYYMMDD.log)
+                    if (DateTime.TryParseExact(
+                            fileName.Substring(11, 8), 
+                            "yyyyMMdd", 
+                            CultureInfo.InvariantCulture, 
+                            DateTimeStyles.None, 
+                            out DateTime fileDate))
+                    {
+                        return fileDate;
+                    }
+                    return DateTime.MinValue; // For files that don't match the expected format
+                })
                 .ToList();
 
             return Ok(logFiles);

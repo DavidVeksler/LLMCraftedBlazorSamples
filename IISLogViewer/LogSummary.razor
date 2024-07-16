@@ -1,4 +1,5 @@
 ﻿@page "/logs"
+@using System.Globalization
 @using PayTech.BackOffice.BackOfficeWeb.Controllers
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
@@ -46,9 +47,14 @@
                         <label for="logFileSelect" class="form-label">Select a log file:</label>
                         <select id="logFileSelect" class="form-select" @bind="selectedLogFile">
                             <option value="">-- Select a log file --</option>
-                            @foreach (var logFile in logFiles)
+                            @foreach (var group in GroupLogFilesByMonth())
                             {
-                                <option value="@logFile">@logFile</option>
+                                <optgroup label="@group.Key">
+                                    @foreach (var logFile in group)
+                                    {
+                                        <option value="@logFile">@FormatLogFileName(logFile)</option>
+                                    }
+                                </optgroup>
                             }
                         </select>
                     </div>
@@ -192,6 +198,42 @@
             "WRN" => "bg-warning text-dark",
             _ => "bg-secondary"
         };
+    }
+
+    private IEnumerable<IGrouping<string, string>> GroupLogFilesByMonth()
+    {
+        return logFiles
+            .Select(file => new
+            {
+                FileName = file,
+                Date = ParseDateFromFileName(file)
+            })
+            .Where(x => x.Date.HasValue)
+            .OrderByDescending(x => x.Date)
+            .GroupBy(x => x.Date.Value.ToString("MMMM yyyy"),
+                x => x.FileName);
+    }
+
+    private DateTime? ParseDateFromFileName(string fileName)
+    {
+        if (DateTime.TryParseExact(
+                fileName.Substring(11, 8),
+                "yyyyMMdd",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.None,
+                out DateTime fileDate))
+        {
+            return fileDate;
+        }
+        return null;
+    }
+
+    private string FormatLogFileName(string fileName)
+    {
+        var date = ParseDateFromFileName(fileName);
+        return date.HasValue
+            ? $"{date.Value:dd MMM yyyy} - {fileName}"
+            : fileName;
     }
 
 
