@@ -1,0 +1,182 @@
+﻿@page "/Users"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.AspNetCore.Identity
+@using PayTech.BackOffice.Core
+@inject UserDbContext DB
+@inject AuthenticationService AuthService
+@inject IEmailSender<ApplicationUser> EmailSender
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Application Users</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="mb-4"><i class="bi bi-people-fill me-2"></i>User Management</h1>
+
+    <div class="row mb-4">
+        <StatCard Title="Total Users" Icon="bi bi-people" Value="@DB.Users.Count()" BackgroundColor="bg-primary" />
+        <StatCard Title="Confirmed Emails" Icon="bi bi-check-circle" Value="@DB.Users.Count(u => u.EmailConfirmed)" BackgroundColor="bg-success" />
+        <StatCard Title="Confirmed Phones" Icon="bi bi-phone" Value="@DB.Users.Count(u => u.PhoneNumberConfirmed)" BackgroundColor="bg-warning" TextColor="text-dark" />
+        <StatCard Title="Locked Out" Icon="bi bi-lock" Value="@DB.Users.Count(u => u.LockoutEnd > DateTime.Now)" BackgroundColor="bg-danger" />
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row align-items-center mb-3">
+                <div class="col-md-6">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" placeholder="Search users..." @bind="SearchTerm" @bind:event="oninput">
+                    </div>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <button class="btn btn-success me-2" @onclick="ExportToExcel"><i class="bi bi-file-earmark-excel me-1"></i>Export to Excel</button>
+                    <a href="Users/create" class="btn btn-primary"><i class="bi bi-person-plus me-1"></i>Create New User</a>
+                </div>
+            </div>
+
+            <QuickGrid Items="FilteredUsers" Class="table table-striped table-bordered table-hover">
+                <PropertyColumn Property="u => u.FirstName" Title="First Name" Sortable="true" />
+                <PropertyColumn Property="u => u.LastName" Title="Last Name" Sortable="true" />
+                <PropertyColumn Property="u => u.Email" Title="Email" Sortable="true" />
+                <TemplateColumn Title="Status">
+                    <div class="d-flex align-items-center">
+                        @if (context.EmailConfirmed)
+                        {
+                            <span class="badge bg-success me-1"><i class="bi bi-check-circle me-1"></i>Verified</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning me-1"><i class="bi bi-exclamation-triangle me-1"></i>Unverified</span>
+                        }
+                        @if (context.LockoutEnd > DateTime.UtcNow)
+                        {
+                            <span class="badge bg-danger"><i class="bi bi-lock-fill me-1"></i>Locked</span>
+                        }
+                    </div>
+                </TemplateColumn>
+                <TemplateColumn Title="Email Status" Sortable="true">
+                    <div class="d-flex align-items-center">
+                        @if (context.EmailConfirmed)
+                        {
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <span>Confirmed</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                            <span>Unconfirmed</span>
+                        }
+                    </div>
+                </TemplateColumn>
+
+                <TemplateColumn Title="Phone Status" Sortable="true">
+                    <div class="d-flex align-items-center">
+                        @if (context.PhoneNumberConfirmed)
+                        {
+                            <i class="bi bi-check-circle-fill text-success me-2"></i>
+                            <span>Confirmed</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-x-circle-fill text-danger me-2"></i>
+                            <span>Unconfirmed</span>
+                        }
+                    </div>
+                </TemplateColumn>
+                <TemplateColumn Title="Actions">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-info" @onclick="() => ShowUserDetails(context)"><i class="bi bi-eye"></i></button>
+                        <a href="@($"Users/edit?id={context.Id}")" class="btn btn-sm btn-primary"><i class="bi bi-pencil"></i></a>
+                        <button class="btn btn-sm btn-danger" @onclick="() => DeleteUser(context)"><i class="bi bi-trash"></i></button>
+                        @if (!context.EmailConfirmed)
+                        {
+                            <button class="btn btn-sm btn-warning" @onclick="() => ResendVerificationCode(context)"><i class="bi bi-envelope"></i></button>
+                        }
+                        @if (context.LockoutEnd > DateTime.UtcNow)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="() => UnlockUser(context)"><i class="bi bi-unlock"></i></button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-secondary" @onclick="() => LockUser(context)"><i class="bi bi-lock"></i></button>
+                        }
+                    </div>
+                </TemplateColumn>
+            </QuickGrid>
+        </div>
+    </div>
+</div>
+
+<Modal @ref="userDetailsModal" Title="User Details">
+    <BodyTemplate>
+        @if (selectedUser != null)
+        {
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Name:</strong> @selectedUser.FirstName @selectedUser.LastName</p>
+                    <p><strong>Email:</strong> @selectedUser.Email</p>
+                    <p><strong>Phone:</strong> @selectedUser.PhoneNumber</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Login Provider:</strong> @selectedUser.LoginProvider</p>
+                    <p><strong>2FA Enabled:</strong> @(selectedUser.TwoFactorEnabled ? "Yes" : "No")</p>
+                    @* <p><strong>Last Login:</strong> @selectedUser.LastLoginDate</p> *@
+                </div>
+            </div>
+        }
+    </BodyTemplate>
+</Modal>
+
+@code {
+    private string SearchTerm = "";
+    private Modal userDetailsModal;
+    private ApplicationUser selectedUser;
+
+    private IQueryable<ApplicationUser> FilteredUsers => DB.Users.Where(u =>
+        string.IsNullOrEmpty(SearchTerm) ||
+        u.FirstName.Contains(SearchTerm) ||
+        u.LastName.Contains(SearchTerm) ||
+        u.Email.Contains(SearchTerm));
+
+    private async Task ResendVerificationCode(ApplicationUser user)
+    {
+        var verificationCode = AuthService.GenerateEmailVerificationCode();
+        await AuthService.StoreEmailVerificationCodeAsync(user.Id, verificationCode);
+        await AuthService.SendEmailVerificationCodeAsync(user, verificationCode, EmailSender);
+        await JSRuntime.InvokeVoidAsync("alert", $"Verification code resent to {user.Email}");
+    }
+
+    private async Task DeleteUser(ApplicationUser user)
+    {
+        bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {user.Email}?");
+        if (confirmed)
+        {
+            DB.Users.Remove(user);
+            DB.SaveChanges();
+        }
+    }
+
+    private async Task LockUser(ApplicationUser user)
+    {
+        user.LockoutEnd = DateTime.UtcNow.AddYears(1);
+        DB.SaveChanges();
+    }
+
+    private async Task UnlockUser(ApplicationUser user)
+    {
+        user.LockoutEnd = null;
+        DB.SaveChanges();
+    }
+
+    private async Task ShowUserDetails(ApplicationUser user)
+    {
+        selectedUser = user;
+        await userDetailsModal.ShowAsync();
+    }
+
+    private async Task ExportToExcel()
+    {
+        // Implement Excel export logic here
+        await JSRuntime.InvokeVoidAsync("alert", "Excel export functionality to be implemented");
+    }
+}

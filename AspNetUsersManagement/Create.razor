@@ -1,0 +1,118 @@
+﻿@page "/Users/create"
+@using PayTech.BackOffice.Data.Authentication
+@inject UserDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Create</PageTitle>
+
+<h1>Create</h1>
+
+<h4>ApplicationUser</h4>
+<hr/>
+<div class="row">
+    <div class="col-md-4">
+        <EditForm method="post" Model="ApplicationUser" OnValidSubmit="AddApplicationUser" FormName="create" Enhance>
+            <DataAnnotationsValidator/>
+            <ValidationSummary class="text-danger"/>
+            <div class="mb-3">
+                <label for="firstname" class="form-label">FirstName:</label>
+                <InputText id="firstname" @bind-Value="ApplicationUser.FirstName" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.FirstName" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="lastname" class="form-label">LastName:</label>
+                <InputText id="lastname" @bind-Value="ApplicationUser.LastName" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.LastName" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="username" class="form-label">UserName:</label>
+                <InputText id="username" @bind-Value="ApplicationUser.UserName" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.UserName" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="normalizedusername" class="form-label">NormalizedUserName:</label>
+                <InputText id="normalizedusername" @bind-Value="ApplicationUser.NormalizedUserName" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.NormalizedUserName" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email:</label>
+                <InputText id="email" @bind-Value="ApplicationUser.Email" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.Email" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="normalizedemail" class="form-label">NormalizedEmail:</label>
+                <InputText id="normalizedemail" @bind-Value="ApplicationUser.NormalizedEmail" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.NormalizedEmail" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="emailconfirmed" class="form-label">EmailConfirmed:</label>
+                <InputCheckbox id="emailconfirmed" @bind-Value="ApplicationUser.EmailConfirmed" class="form-check-input"/>
+                <ValidationMessage For="() => ApplicationUser.EmailConfirmed" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="passwordhash" class="form-label">PasswordHash:</label>
+                <InputText id="passwordhash" @bind-Value="ApplicationUser.PasswordHash" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.PasswordHash" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="securitystamp" class="form-label">SecurityStamp:</label>
+                <InputText id="securitystamp" @bind-Value="ApplicationUser.SecurityStamp" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.SecurityStamp" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="concurrencystamp" class="form-label">ConcurrencyStamp:</label>
+                <InputText id="concurrencystamp" @bind-Value="ApplicationUser.ConcurrencyStamp" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.ConcurrencyStamp" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="phonenumber" class="form-label">PhoneNumber:</label>
+                <InputText id="phonenumber" @bind-Value="ApplicationUser.PhoneNumber" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.PhoneNumber" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="phonenumberconfirmed" class="form-label">PhoneNumberConfirmed:</label>
+                <InputCheckbox id="phonenumberconfirmed" @bind-Value="ApplicationUser.PhoneNumberConfirmed" class="form-check-input"/>
+                <ValidationMessage For="() => ApplicationUser.PhoneNumberConfirmed" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="twofactorenabled" class="form-label">TwoFactorEnabled:</label>
+                <InputCheckbox id="twofactorenabled" @bind-Value="ApplicationUser.TwoFactorEnabled" class="form-check-input"/>
+                <ValidationMessage For="() => ApplicationUser.TwoFactorEnabled" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="lockoutend" class="form-label">LockoutEnd:</label>
+                <InputDate id="lockoutend" @bind-Value="ApplicationUser.LockoutEnd" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.LockoutEnd" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="lockoutenabled" class="form-label">LockoutEnabled:</label>
+                <InputCheckbox id="lockoutenabled" @bind-Value="ApplicationUser.LockoutEnabled" class="form-check-input"/>
+                <ValidationMessage For="() => ApplicationUser.LockoutEnabled" class="text-danger"/>
+            </div>
+            <div class="mb-3">
+                <label for="accessfailedcount" class="form-label">AccessFailedCount:</label>
+                <InputNumber id="accessfailedcount" @bind-Value="ApplicationUser.AccessFailedCount" class="form-control"/>
+                <ValidationMessage For="() => ApplicationUser.AccessFailedCount" class="text-danger"/>
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </EditForm>
+    </div>
+</div>
+
+<div>
+    <a href="/Users">Back to List</a>
+</div>
+
+@code {
+
+    [SupplyParameterFromForm] public ApplicationUser ApplicationUser { get; set; } = new();
+
+    // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
+    public async Task AddApplicationUser()
+    {
+        DB.Users.Add(ApplicationUser);
+        await DB.SaveChangesAsync();
+        NavigationManager.NavigateTo("/Users");
+    }
+
+}

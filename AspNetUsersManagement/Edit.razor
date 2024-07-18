@@ -1,0 +1,278 @@
+﻿@page "/Users/edit"
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Data.Authentication
+@using PayTech.BackOffice.Data.Types
+@inject UserDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Edit User @ApplicationUser</PageTitle>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-lg">
+                <div class="card-header bg-primary text-white">
+                    <h2 class="mb-0">Edit User Details for @ApplicationUser?.ToString()</h2>
+                </div>
+                <div class="card-body">
+                    <Notification Message="@NotificationMessage" Type="@NotificationType" Duration="3000"/>
+
+                    @if (ApplicationUser is null)
+                    {
+                        <div class="text-center">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                    }
+                    else
+                    {
+                        <EditForm method="post" Model="ApplicationUser" OnValidSubmit="UpdateApplicationUser" FormName="edit" Enhance>
+                            <DataAnnotationsValidator/>
+                            <ValidationSummary/>
+                            <input type="hidden" name="ApplicationUser.Id" value="@ApplicationUser.Id"/>
+
+                            <h4 class="mb-4">Primary User Information</h4>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <InputText id="firstname" @bind-Value="ApplicationUser.FirstName" class="form-control" placeholder="First Name"/>
+                                        <label for="firstname">First Name</label>
+                                        <ValidationMessage For="() => ApplicationUser.FirstName" class="text-danger"/>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-floating">
+                                        <InputText id="lastname" @bind-Value="ApplicationUser.LastName" class="form-control" placeholder="Last Name"/>
+                                        <label for="lastname">Last Name</label>
+                                        <ValidationMessage For="() => ApplicationUser.LastName" class="text-danger"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <InputText id="username" @bind-Value="ApplicationUser.UserName" class="form-control" placeholder="Username"/>
+                                <label for="username">Username</label>
+                                <ValidationMessage For="() => ApplicationUser.UserName" class="text-danger"/>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <InputText id="email" @bind-Value="ApplicationUser.Email" class="form-control" placeholder="Email"/>
+                                <label for="email">Email</label>
+                                <ValidationMessage For="() => ApplicationUser.Email" class="text-danger"/>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <InputText id="phonenumber" @bind-Value="ApplicationUser.PhoneNumber" class="form-control" placeholder="Phone Number"/>
+                                <label for="phonenumber">Phone Number</label>
+                                <ValidationMessage For="() => ApplicationUser.PhoneNumber" class="text-danger"/>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <InputSelect id="kycLevel" @bind-Value="ApplicationUser.KycLevel" class="form-control">
+                                    @foreach (var level in Enum.GetValues<KycLevel>())
+                                    {
+                                        <option value="@level">@level</option>
+                                    }
+                                </InputSelect>
+                                <label for="kycLevel">KYC Level</label>
+                                <ValidationMessage For="() => ApplicationUser.KycLevel" class="text-danger"/>
+                            </div>
+                            <div class="form-floating mb-3">
+                                <InputSelect id="roles" class="form-control" multiple @bind-Value="SelectedRoleIds">
+                                    @foreach (var role in AllRoles)
+                                    {
+                                        <option value="@role.Id">@role.Name</option>
+                                    }
+                                </InputSelect>
+                                <label for="roles">Roles</label>
+                            </div>
+
+                            <div class="form-floating mb-3">
+                                <InputText id="avatar" @bind-Value="ApplicationUser.Avatar" class="form-control" placeholder="Avatar URL"/>
+                                <label for="avatar">Avatar URL</label>
+                                <ValidationMessage For="() => ApplicationUser.Avatar" class="text-danger"/>
+                            </div>
+
+                            <div class="form-floating mb-3">
+                                <InputText id="loginProvider" @bind-Value="ApplicationUser.LoginProvider" class="form-control" placeholder="Login Provider"/>
+                                <label for="loginProvider">Login Provider</label>
+                                <ValidationMessage For="() => ApplicationUser.LoginProvider" class="text-danger"/>
+                            </div>
+
+                            <div class="mb-4">
+                                <button class="btn btn-link text-decoration-none" type="button" data-bs-toggle="collapse" data-bs-target="#additionalDetails" aria-expanded="false" aria-controls="additionalDetails">
+                                    <i class="bi bi-chevron-down me-2"></i>Additional User Details
+                                </button>
+                            </div>
+
+                            <div class="collapse" id="additionalDetails">
+                                <div class="form-floating mb-3">
+                                    <InputText id="normalizedusername" @bind-Value="ApplicationUser.NormalizedUserName" class="form-control" placeholder="Normalized Username"/>
+                                    <label for="normalizedusername">Normalized Username</label>
+                                    <ValidationMessage For="() => ApplicationUser.NormalizedUserName" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText id="normalizedemail" @bind-Value="ApplicationUser.NormalizedEmail" class="form-control" placeholder="Normalized Email"/>
+                                    <label for="normalizedemail">Normalized Email</label>
+                                    <ValidationMessage For="() => ApplicationUser.NormalizedEmail" class="text-danger"/>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <InputCheckbox id="emailconfirmed" @bind-Value="ApplicationUser.EmailConfirmed" class="form-check-input"/>
+                                    <label for="emailconfirmed" class="form-check-label">Email Confirmed</label>
+                                    <ValidationMessage For="() => ApplicationUser.EmailConfirmed" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText id="passwordhash" @bind-Value="ApplicationUser.PasswordHash" class="form-control" placeholder="Password Hash"/>
+                                    <label for="passwordhash">Password Hash</label>
+                                    <ValidationMessage For="() => ApplicationUser.PasswordHash" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText id="securitystamp" @bind-Value="ApplicationUser.SecurityStamp" class="form-control" placeholder="Security Stamp"/>
+                                    <label for="securitystamp">Security Stamp</label>
+                                    <ValidationMessage For="() => ApplicationUser.SecurityStamp" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputText id="concurrencystamp" @bind-Value="ApplicationUser.ConcurrencyStamp" class="form-control" placeholder="Concurrency Stamp"/>
+                                    <label for="concurrencystamp">Concurrency Stamp</label>
+                                    <ValidationMessage For="() => ApplicationUser.ConcurrencyStamp" class="text-danger"/>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <InputCheckbox id="phonenumberconfirmed" @bind-Value="ApplicationUser.PhoneNumberConfirmed" class="form-check-input"/>
+                                    <label for="phonenumberconfirmed" class="form-check-label">Phone Number Confirmed</label>
+                                    <ValidationMessage For="() => ApplicationUser.PhoneNumberConfirmed" class="text-danger"/>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <InputCheckbox id="twofactorenabled" @bind-Value="ApplicationUser.TwoFactorEnabled" class="form-check-input"/>
+                                    <label for="twofactorenabled" class="form-check-label">Two-Factor Authentication Enabled</label>
+                                    <ValidationMessage For="() => ApplicationUser.TwoFactorEnabled" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputDate id="lockoutend" @bind-Value="ApplicationUser.LockoutEnd" class="form-control"/>
+                                    <label for="lockoutend">Lockout End</label>
+                                    <ValidationMessage For="() => ApplicationUser.LockoutEnd" class="text-danger"/>
+                                </div>
+                                <div class="form-check mb-3">
+                                    <InputCheckbox id="lockoutenabled" @bind-Value="ApplicationUser.LockoutEnabled" class="form-check-input"/>
+                                    <label for="lockoutenabled" class="form-check-label">Lockout Enabled</label>
+                                    <ValidationMessage For="() => ApplicationUser.LockoutEnabled" class="text-danger"/>
+                                </div>
+                                <div class="form-floating mb-3">
+                                    <InputNumber id="accessfailedcount" @bind-Value="ApplicationUser.AccessFailedCount" class="form-control"/>
+                                    <label for="accessfailedcount">Access Failed Count</label>
+                                    <ValidationMessage For="() => ApplicationUser.AccessFailedCount" class="text-danger"/>
+                                </div>
+                            </div>
+
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary btn-lg">Update User</button>
+                            </div>
+                        </EditForm>
+                    }
+                </div>
+                <div class="card-footer text-end">
+                    <a href="/Users" class="btn btn-link">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+
+    private string NotificationMessage { get; set; }
+    private Notification.NotificationType NotificationType { get; set; }
+
+
+    [SupplyParameterFromQuery] public string Id { get; set; }
+
+    [SupplyParameterFromForm] public ApplicationUser? ApplicationUser { get; set; }
+
+    private List<IdentityRole> AllRoles { get; set; } = new();
+
+    // https://devblogs.microsoft.com/dotnet/asp-net-core-updates-in-net-6-preview-7/
+    private string[] SelectedRoleIds { get; set; } = { };
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApplicationUser ??= await DB.Users.FirstOrDefaultAsync(m => m.Id == Id);
+
+        // ApplicationUser.ApplicationUser ??= PayTechDbContext.ApplicationUsers.Where(p => p.CustomerId == Id).FirstOrDefault();
+
+        // ApplicationUser.ApplicationUser = await DB.ApplicationUsers.FirstOrDefaultAsync(cp => cp.CustomerId == ApplicationUser.Id);
+
+        if (ApplicationUser is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+
+        if (ApplicationUser is not null)
+        {
+            var userRoles = await DB.UserRoles
+                .Where(r => r.UserId == ApplicationUser.Id)
+                .ToListAsync();
+
+            SelectedRoleIds = userRoles.Select(r => r.RoleId).ToArray();
+            AllRoles = await DB.Roles.ToListAsync();
+        }
+    }
+
+    // To protect from overposting attacks, enable the specific properties you want to bind to.
+    // For more details, see https://aka.ms/RazorPagesCRUD.
+    public async Task UpdateApplicationUser()
+    {
+        DB.Attach(ApplicationUser).State = EntityState.Modified;
+
+        try
+        {
+            var existingRoles = await DB.UserRoles
+                .Where(r => r.UserId == ApplicationUser.Id)
+                .ToListAsync();
+            DB.UserRoles.RemoveRange(existingRoles);
+            foreach (var roleId in SelectedRoleIds)
+            {
+                DB.UserRoles.Add(new IdentityUserRole<string>
+                {
+                    UserId = ApplicationUser.Id,
+                    RoleId = roleId
+                });
+            }
+
+            await DB.SaveChangesAsync();
+            ClearErrorMessage();
+            ShowNotificationMessage("User Profile Updated", Notification.NotificationType.Success);
+        }
+        catch (DbUpdateConcurrencyException ex)
+        {
+            if (!ApplicationUserExists(ApplicationUser.Id))
+            {
+                NavigationManager.NavigateTo("notfound");
+            }
+            else
+            {
+                throw;
+            }
+
+            ClearErrorMessage();
+            ShowNotificationMessage(ex.Message, Notification.NotificationType.Success);
+        }
+    }
+
+    bool ApplicationUserExists(string id)
+    {
+        var roles = DB.UserRoles.Where(r => r.UserId == ApplicationUser.Id).ToList();
+
+        return DB.Users.Any(e => e.Id == id);
+    }
+
+    private void ClearErrorMessage()
+    {
+        ShowNotificationMessage("", Notification.NotificationType.Info);
+    }
+
+    private void ShowNotificationMessage(string message, Notification.NotificationType type)
+    {
+        NotificationMessage = message;
+        NotificationType = type;
+
+        StateHasChanged();
+    }
+
+}

@@ -1,0 +1,116 @@
+﻿@page "/Users/delete"
+@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Data.Authentication
+@inject UserDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Delete</PageTitle>
+
+<h1>Delete</h1>
+
+<h3>Are you sure you want to delete this?</h3>
+<div>
+    <h4>ApplicationUser</h4>
+    <hr/>
+    @if (ApplicationUser is null)
+    {
+        <p>
+            <em>Loading...</em>
+        </p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">FirstName</dt>
+            <dd class="col-sm-10">@ApplicationUser.FirstName</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">LastName</dt>
+            <dd class="col-sm-10">@ApplicationUser.LastName</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">UserName</dt>
+            <dd class="col-sm-10">@ApplicationUser.UserName</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">NormalizedUserName</dt>
+            <dd class="col-sm-10">@ApplicationUser.NormalizedUserName</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">Email</dt>
+            <dd class="col-sm-10">@ApplicationUser.Email</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">NormalizedEmail</dt>
+            <dd class="col-sm-10">@ApplicationUser.NormalizedEmail</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">EmailConfirmed</dt>
+            <dd class="col-sm-10">@ApplicationUser.EmailConfirmed</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">PasswordHash</dt>
+            <dd class="col-sm-10">@ApplicationUser.PasswordHash</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">SecurityStamp</dt>
+            <dd class="col-sm-10">@ApplicationUser.SecurityStamp</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">ConcurrencyStamp</dt>
+            <dd class="col-sm-10">@ApplicationUser.ConcurrencyStamp</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">PhoneNumber</dt>
+            <dd class="col-sm-10">@ApplicationUser.PhoneNumber</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">PhoneNumberConfirmed</dt>
+            <dd class="col-sm-10">@ApplicationUser.PhoneNumberConfirmed</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">TwoFactorEnabled</dt>
+            <dd class="col-sm-10">@ApplicationUser.TwoFactorEnabled</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">LockoutEnd</dt>
+            <dd class="col-sm-10">@ApplicationUser.LockoutEnd</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">LockoutEnabled</dt>
+            <dd class="col-sm-10">@ApplicationUser.LockoutEnabled</dd>
+        </dl>
+        <dl class="row">
+            <dt class="col-sm-2">AccessFailedCount</dt>
+            <dd class="col-sm-10">@ApplicationUser.AccessFailedCount</dd>
+        </dl>
+        <EditForm method="post" Model="ApplicationUser" OnValidSubmit="DeleteApplicationUser" FormName="delete" Enhance>
+            <button type="submit" class="btn btn-danger" disabled="@(ApplicationUser is null)">Delete</button> |
+            <a href="/Users">Back to List</a>
+        </EditForm>
+    }
+</div>
+
+@code {
+    ApplicationUser? ApplicationUser;
+
+    [SupplyParameterFromQuery] public string Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApplicationUser = await DB.Users.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ApplicationUser is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+    public async Task DeleteApplicationUser()
+    {
+        DB.Users.Remove(ApplicationUser!);
+        await DB.SaveChangesAsync();
+        NavigationManager.NavigateTo("/Users");
+    }
+
+}

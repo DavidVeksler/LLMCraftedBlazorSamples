@@ -1,0 +1,78 @@
+﻿@page "/Users/details"
+@using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Data.Authentication
+@inject UserDbContext DB
+@inject NavigationManager NavigationManager
+
+<PageTitle>Details</PageTitle>
+
+<h1>Details</h1>
+
+<div>
+    <h4>ApplicationUser</h4>
+    <hr/>
+    @if (ApplicationUser is null)
+    {
+        <p>
+            <em>Loading...</em>
+        </p>
+    }
+    else
+    {
+        <dl class="row">
+            <dt class="col-sm-2">FirstName</dt>
+            <dd class="col-sm-10">@ApplicationUser.FirstName</dd>
+            <dt class="col-sm-2">LastName</dt>
+            <dd class="col-sm-10">@ApplicationUser.LastName</dd>
+            <dt class="col-sm-2">UserName</dt>
+            <dd class="col-sm-10">@ApplicationUser.UserName</dd>
+            <dt class="col-sm-2">NormalizedUserName</dt>
+            <dd class="col-sm-10">@ApplicationUser.NormalizedUserName</dd>
+            <dt class="col-sm-2">Email</dt>
+            <dd class="col-sm-10">@ApplicationUser.Email</dd>
+            <dt class="col-sm-2">NormalizedEmail</dt>
+            <dd class="col-sm-10">@ApplicationUser.NormalizedEmail</dd>
+            <dt class="col-sm-2">EmailConfirmed</dt>
+            <dd class="col-sm-10">@ApplicationUser.EmailConfirmed</dd>
+            <dt class="col-sm-2">PasswordHash</dt>
+            <dd class="col-sm-10">@ApplicationUser.PasswordHash</dd>
+            <dt class="col-sm-2">SecurityStamp</dt>
+            <dd class="col-sm-10">@ApplicationUser.SecurityStamp</dd>
+            <dt class="col-sm-2">ConcurrencyStamp</dt>
+            <dd class="col-sm-10">@ApplicationUser.ConcurrencyStamp</dd>
+            <dt class="col-sm-2">PhoneNumber</dt>
+            <dd class="col-sm-10">@ApplicationUser.PhoneNumber</dd>
+            <dt class="col-sm-2">PhoneNumberConfirmed</dt>
+            <dd class="col-sm-10">@ApplicationUser.PhoneNumberConfirmed</dd>
+            <dt class="col-sm-2">TwoFactorEnabled</dt>
+            <dd class="col-sm-10">@ApplicationUser.TwoFactorEnabled</dd>
+            <dt class="col-sm-2">LockoutEnd</dt>
+            <dd class="col-sm-10">@ApplicationUser.LockoutEnd</dd>
+            <dt class="col-sm-2">LockoutEnabled</dt>
+            <dd class="col-sm-10">@ApplicationUser.LockoutEnabled</dd>
+            <dt class="col-sm-2">AccessFailedCount</dt>
+            <dd class="col-sm-10">@ApplicationUser.AccessFailedCount</dd>
+        </dl>
+        <div>
+            <a href="@($"/Users/edit?id={ApplicationUser.Id}")">Edit</a> |
+            <a href="@("/Users")">Back to List</a>
+        </div>
+    }
+</div>
+
+@code {
+    ApplicationUser? ApplicationUser;
+
+    [SupplyParameterFromQuery] public string Id { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApplicationUser = await DB.Users.FirstOrDefaultAsync(m => m.Id == Id);
+
+        if (ApplicationUser is null)
+        {
+            NavigationManager.NavigateTo("notfound");
+        }
+    }
+
+}
