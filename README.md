@@ -17,6 +17,8 @@ A curated collection of C# and Blazor code samples, components, and utilities ge
 ![Payments Tester](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/BitPayPaymentsTester/Screenshot%202024-07-10%20112645.png?raw=true)
 ![KYC Dashboard](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/KYCDashboard/Screenshot%202024-07-10%20113700.png?raw=true)
 ![JSON Viewer](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/JSONViewer/Screenshot%202024-07-10%20113159.png?raw=true)
+![ASP.Net Users Management]()![image](https://github.com/user-attachments/assets/3c98b93f-a30c-408c-939d-e4ee70622f2d)
+
 
 ## Getting Started
 
