@@ -72,28 +72,45 @@ namespace PayTech.BackOffice.BackOfficeWeb.Controllers
         {
             var logEntries = new List<LogEntry>();
             var lines = logContent.Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+            LogEntry currentEntry = null;
+
             foreach (var line in lines)
             {
-                var entry = ParseLogEntry(line);
-                if (entry != null && entry.Type != "INF")
+                var newEntry = ParseLogEntry(line);
+                if (newEntry != null)
                 {
-                    logEntries.Add(entry);
+                    if (currentEntry != null)
+                    {
+                        logEntries.Add(currentEntry);
+                    }
+                    currentEntry = newEntry;
+                }
+                else if (currentEntry != null)
+                {
+                    currentEntry.Message += Environment.NewLine + line;
                 }
             }
+
+            if (currentEntry != null)
+            {
+                logEntries.Add(currentEntry);
+            }
+
             return logEntries;
         }
 
         private LogEntry ParseLogEntry(string line)
         {
-            // IIS log format: yyyy-MM-dd HH:mm:ss.fff +/-zz:zz [LOG_LEVEL] Message
-            var match = System.Text.RegularExpressions.Regex.Match(line, @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) \[(.*?)\] (.*)$");
+            // Updated regex to handle both formats
+            var match = System.Text.RegularExpressions.Regex.Match(line, @"^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} [+-]\d{2}:\d{2}) (?:\[(\d+)\] )?\[(.*?)\] (.*)$");
             if (match.Success)
             {
                 return new LogEntry
                 {
                     Timestamp = match.Groups[1].Value.Trim(),
-                    Type = match.Groups[2].Value.Trim(),
-                    Message = match.Groups[3].Value.Trim()
+                    ProcessId = match.Groups[2].Success ? match.Groups[2].Value : null,
+                    Type = match.Groups[3].Value.Trim(),
+                    Message = match.Groups[4].Value.Trim()
                 };
             }
             return null;
@@ -103,7 +120,8 @@ namespace PayTech.BackOffice.BackOfficeWeb.Controllers
     public class LogEntry
     {
         public string Timestamp { get; set; }
-        public string Message { get; set; }
+        public string? ProcessId { get; set; }
         public string Type { get; set; }
+        public string Message { get; set; }
     }
 }
