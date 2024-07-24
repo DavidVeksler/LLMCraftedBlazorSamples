@@ -1,7 +1,6 @@
 ﻿@page "/logs"
-@using System.Globalization
-@using System.Text.RegularExpressions
 @using PayTech.BackOffice.BackOfficeWeb.Controllers
+@using PayTech.BackOffice.BackOfficeWeb.Services
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -87,7 +86,7 @@
                     </div>
                     <div class="mb-3">
                         <label for="searchInput" class="form-label">Search logs:</label>
-                        <input type="text" class="form-control" id="searchInput" @bind="searchTerm" @bind:event="oninput" placeholder="Enter search term...">
+                        <input type="text" class="form-control" id="searchInput" @bind="searchTerm" @bind:event="oninput" @onkeyup="FilterLogs" placeholder="Enter search term...">
                     </div>
                     <button class="btn btn-primary" @onclick="LoadLogContent">
                         <i class="bi bi-cloud-download-fill me-2"></i>Load
@@ -111,29 +110,51 @@
     {
         <div class="row mb-4">
             <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Log Insights</h5>
-                        <ul class="list-group">
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Most Common Error:
-                                <span class="badge bg-primary rounded-pill">@GetMostCommonError()</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Average Response Time:
-                                <span class="badge bg-primary rounded-pill">@GetAverageResponseTime() ms</span>
-                            </li>
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                Errors in Last Hour:
-                                <span class="badge bg-primary rounded-pill">@GetErrorsInLastHour()</span>
-                            </li>
-                        </ul>
+                <div class="accordion" id="logInsightsAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header" id="logInsightsHeader">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#logInsightsContent" aria-expanded="false" aria-controls="logInsightsContent">
+                                <i class="bi bi-graph-up me-2"></i>Log Insights
+                            </button>
+                        </h2>
+                        <div id="logInsightsContent" class="accordion-collapse collapse" aria-labelledby="logInsightsHeader" data-bs-parent="#logInsightsAccordion">
+                            <div class="accordion-body">
+                                <h5 class="mb-3">Top 5 Most Common Errors:</h5>
+                                <ul class="list-group mb-3">
+                                    @foreach (var error in mostCommonErrors)
+                                    {
+                                        <li class="list-group-item">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <h6 class="mb-1">@error.ExceptionName</h6>
+                                                <span class="badge bg-primary rounded-pill">@error.Count</span>
+                                            </div>
+                                            <small class="text-muted">Sample Messages:</small>
+                                            <ul class="list-unstyled mt-2">
+                                                @foreach (var message in error.SampleMessages)
+                                                {
+                                                    <li><small>• @message</small></li>
+                                                }
+                                            </ul>
+                                        </li>
+                                    }
+                                </ul>
+                                <ul class="list-group">
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Average Response Time:
+                                        <span class="badge bg-primary rounded-pill">@averageResponseTime ms</span>
+                                    </li>
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        Errors in Last Hour:
+                                        <span class="badge bg-primary rounded-pill">@errorsInLastHour</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
-       
         <div class="row">
             <div class="col-12">
                 <table class="table table-striped table-hover">
@@ -145,16 +166,15 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var entry in filteredLogEntries)
-                        {
-                            <tr class="@GetRowClass(entry.Type)">
-                                <td>@entry.Timestamp</td>
+                        <Virtualize Items="filteredLogEntries" Context="entry">
+                            <tr class="@LogAnalysisHelper.GetRowClass(entry.Type)" @key="(entry.Timestamp +  entry.ProcessId + entry.Message)">
+                                <td>@FormatTimestamp(entry.Timestamp)</td>
                                 <td>
-                                    <span class="badge @GetBadgeClass(entry.Type)">@entry.Type</span>
+                                    <span class="badge @LogAnalysisHelper.GetBadgeClass(entry.Type)">@entry.Type</span>
                                 </td>
                                 <td>@entry.Message</td>
                             </tr>
-                        }
+                        </Virtualize>
                     </tbody>
                 </table>
             </div>
@@ -176,22 +196,22 @@
     private List<string> logFiles = new();
     private string selectedLogFile = string.Empty;
     private List<LogEntry> logEntries = new();
+    private List<LogEntry> filteredLogEntries = new();
     private bool loading;
 
-    private bool showInfo = true;
+    private bool showInfo = false;
     private bool showWarning = true;
     private bool showError = true;
     private string searchTerm = string.Empty;
 
-    
+    private List<LogAnalysisHelper.ErrorSummary> mostCommonErrors;
+    private double averageResponseTime = 0;
+    private int errorsInLastHour = 0;
 
-    private List<LogEntry> filteredLogEntries => logEntries
-        .Where(e => (showInfo && e.Type == "INF") ||
-                    (showWarning && e.Type == "WRN") ||
-                    (showError && e.Type == "ERR"))
-        .Where(e => string.IsNullOrEmpty(searchTerm) ||
-                    e.Message.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-        .ToList();
+    private string FormatTimestamp(string timestamp)
+    {
+        return DateTime.Parse((timestamp)).ToString("hh:mm:ss tt").ToLower();
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -199,16 +219,20 @@
         var baseUri = NavigationManager.BaseUri;
         HttpClient.BaseAddress = new Uri(baseUri);
 
-      
+
+        new System.Threading.Timer(async _ =>
+        {
+            await LoadLogContent();
+            await InvokeAsync(StateHasChanged);
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
     }
-
-
 
     private async Task OnWebAppSelectionChanged(ChangeEventArgs e)
     {
         selectedWebApp = e.Value.ToString();
         selectedLogFile = string.Empty;
         logEntries.Clear();
+        filteredLogEntries.Clear();
 
         if (!string.IsNullOrEmpty(selectedWebApp))
         {
@@ -235,16 +259,29 @@
             loading = true;
             try
             {
-                logEntries = await HttpClient.GetFromJsonAsync<List<LogEntry>>($"/api/logs/{selectedWebApp}/{selectedLogFile}");
-                if (logEntries == null || logEntries.Count == 0)
+                var allLogEntries = await HttpClient.GetFromJsonAsync<List<LogEntry>>($"/api/logs/{selectedWebApp}/{selectedLogFile}");
+                if (allLogEntries == null || allLogEntries.Count == 0)
                 {
                     Console.WriteLine("No log entries found or unable to parse the response.");
+                    logEntries = new List<LogEntry>();
                 }
-               
+                else
+                {
+                    // Remove duplicate records based on timestamp and sort by date descending
+                    logEntries = allLogEntries
+                        .GroupBy(entry => entry.Timestamp)
+                        .Select(group => group.First())
+                        .OrderByDescending(entry => entry.Timestamp)
+                        .ToList();
+
+                    FilterLogs();
+                    UpdateInsights();
+                }
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Error loading log content: {ex.Message}");
+                logEntries = new List<LogEntry>();
             }
             finally
             {
@@ -253,93 +290,28 @@
         }
     }
 
-   
+    private void FilterLogs()
+    {
+        filteredLogEntries = logEntries
+            .Where(e => (showInfo && e.Type == "INF") ||
+                        (showWarning && e.Type == "WRN") ||
+                        (showError && e.Type == "ERR"))
+            .Where(e => string.IsNullOrEmpty(searchTerm) ||
+                        e.Message.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+            .OrderByDescending(e => e.Timestamp)
+            .ToList();
+    }
 
-    private string GetRowClass(string entryType) =>
-        entryType switch
-        {
-            "ERR" => "table-danger",
-            "WRN" => "table-warning",
-            _ => ""
-        };
-
-    private string GetBadgeClass(string entryType) =>
-        entryType switch
-        {
-            "ERR" => "bg-danger",
-            "WRN" => "bg-warning text-dark",
-            _ => "bg-info"
-        };
+    private void UpdateInsights()
+    {
+        mostCommonErrors = LogAnalysisHelper.GetMostCommonErrors(logEntries);
+        averageResponseTime = LogAnalysisHelper.GetAverageResponseTime(logEntries);
+        errorsInLastHour = LogAnalysisHelper.GetErrorsInLastHour(logEntries);
+    }
 
     private IEnumerable<IGrouping<string, string>> GroupLogFilesByMonth() =>
-        logFiles
-            .Select(file => new
-            {
-                FileName = file,
-                Date = ParseDateFromFileName(file)
-            })
-            .Where(x => x.Date.HasValue)
-            .OrderByDescending(x => x.Date)
-            .GroupBy(x => x.Date.Value.ToString("MMMM yyyy"),
-                x => x.FileName);
+        LogAnalysisHelper.GroupLogFilesByMonth(logFiles);
 
-    private DateTime? ParseDateFromFileName(string fileName)
-    {
-        if (DateTime.TryParseExact(
-                fileName.Substring(11, 8),
-                "yyyyMMdd",
-                CultureInfo.InvariantCulture,
-                DateTimeStyles.None,
-                out DateTime fileDate))
-        {
-            return fileDate;
-        }
-        return null;
-    }
-
-    private string FormatLogFileName(string fileName)
-    {
-        var date = ParseDateFromFileName(fileName);
-        return date.HasValue
-            ? $"{date.Value:dd MMM yyyy} - {fileName}"
-            : fileName;
-    }
-
-    private string GetMostCommonError()
-    {
-        var errorMessages = logEntries
-            .Where(e => e.Type == "ERR")
-            .Select(e => GetErrorType(e.Message))
-            .GroupBy(e => e)
-            .OrderByDescending(g => g.Count())
-            .FirstOrDefault();
-
-        return errorMessages?.Key ?? "No errors found";
-    }
-
-    private string GetErrorType(string errorMessage)
-    {
-        var match = Regex.Match(errorMessage, @"^([a-zA-Z.]+Exception)");
-        return match.Success ? match.Groups[1].Value : "Unknown Error";
-    }
-
-    private double GetAverageResponseTime()
-    {
-        var responseTimes = logEntries
-            .Where(e => e.Message.Contains("responded"))
-            .Select(e =>
-            {
-                var match = Regex.Match(e.Message, @"responded \d+ in (\d+(\.\d+)?) ms");
-                return match.Success && double.TryParse(match.Groups[1].Value, out double time) ? time : 0;
-            })
-            .Where(t => t > 0);
-
-        return responseTimes.Any() ? Math.Round(responseTimes.Average(), 2) : 0;
-    }
-
-    private int GetErrorsInLastHour()
-    {
-        var oneHourAgo = DateTime.Now.AddHours(-1);
-        return logEntries.Count(e => e.Type == "ERR" && DateTime.Parse(e.Timestamp) >= oneHourAgo);
-    }
+    private string FormatLogFileName(string fileName) =>
+        LogAnalysisHelper.FormatLogFileName(fileName);
 }

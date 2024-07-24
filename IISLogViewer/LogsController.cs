@@ -51,20 +51,48 @@ namespace PayTech.BackOffice.BackOfficeWeb.Controllers
         public IActionResult GetLogContent(string webApp, string fileName)
         {
             var logFilePath = Path.Combine(_logDirectory, webApp, "logs", fileName);
-
             if (!System.IO.File.Exists(logFilePath))
             {
                 return NotFound("Log file not found.");
             }
 
-            List<LogEntry> logEntries;
+            var logEntries = new List<LogEntry>();
+            const int bufferSize = 4096;
+            var buffer = new char[bufferSize];
+            var leftOver = string.Empty;
+
             using (var fileStream = new FileStream(logFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
             using (var streamReader = new StreamReader(fileStream))
             {
-                var logContent = streamReader.ReadToEnd();
-                logEntries = ExtractLogEntries(logContent);
-                
+                fileStream.Seek(0, SeekOrigin.End);
+                long position = fileStream.Position;
+
+                while (position > 0)
+                {
+                    int charsToRead = (int)Math.Min(bufferSize, position);
+                    position -= charsToRead;
+                    fileStream.Seek(position, SeekOrigin.Begin);
+
+                    int charsRead = streamReader.ReadBlock(buffer, 0, charsToRead);
+
+                    var text = new string(buffer, 0, charsRead);
+                    var lines = (text + leftOver).Split(new[] { Environment.NewLine }, StringSplitOptions.RemoveEmptyEntries);
+
+                    for (int i = lines.Length - 1; i >= 0; i--)
+                    {
+                        var entry = ParseLogEntry(lines[i]);
+                        if (entry != null)
+                        {
+                            logEntries.Add(entry);
+                        }
+                    }
+
+                    leftOver = lines[0];
+                }
             }
+
+            logEntries.Reverse(); // Reverse the list to get chronological order
+
             return Ok(logEntries);
         }
 
