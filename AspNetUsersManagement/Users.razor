@@ -6,6 +6,8 @@
 @inject AuthenticationService AuthService
 @inject IEmailSender<ApplicationUser> EmailSender
 @inject IJSRuntime JSRuntime
+@inject NavigationManager NavigationManager
+
 
 <PageTitle>Application Users</PageTitle>
 
@@ -38,6 +40,8 @@
                 <PropertyColumn Property="u => u.FirstName" Title="First Name" Sortable="true" />
                 <PropertyColumn Property="u => u.LastName" Title="Last Name" Sortable="true" />
                 <PropertyColumn Property="u => u.Email" Title="Email" Sortable="true" />
+                <PropertyColumn Property="u => u.PhoneNumber" Title="Phone" Sortable="true" />
+
                 <TemplateColumn Title="Status">
                     <div class="d-flex align-items-center">
                         @if (context.EmailConfirmed)
@@ -101,6 +105,24 @@
                             <button class="btn btn-sm btn-secondary" @onclick="() => LockUser(context)"><i class="bi bi-lock"></i></button>
                         }
                     </div>
+                </TemplateColumn>
+                <PropertyColumn Property="u => u.LoginProvider" Title="Provider" Sortable="true" />
+
+
+                <TemplateColumn Title="Last Login">
+                    @if (context.LastLoginDate.HasValue)
+                    {
+                        <span>@context.LastLoginDate.Value.ToString("yyyy-MM-dd HH:mm:ss")</span>
+                    }
+                    else
+                    {
+                        <span>Never</span>
+                    }
+                </TemplateColumn>
+                
+                
+                <TemplateColumn Title="KYC Level">
+                <span>@context.KycLevel</span>
                 </TemplateColumn>
             </QuickGrid>
         </div>
@@ -170,8 +192,11 @@
 
     private async Task ShowUserDetails(ApplicationUser user)
     {
-        selectedUser = user;
-        await userDetailsModal.ShowAsync();
+        // redirect to /Users/details?id=
+        NavigationManager.NavigateTo($"/Users/details?id={user.Id}", true);
+
+        // selectedUser = user;
+        // await userDetailsModal.ShowAsync();
     }
 
     private async Task ExportToExcel()
