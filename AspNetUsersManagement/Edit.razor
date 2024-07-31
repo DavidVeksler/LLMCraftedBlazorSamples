@@ -1,12 +1,19 @@
 ﻿@page "/Users/edit"
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
+@using PayTech.BackOffice.Core.DomainServices
 @using PayTech.BackOffice.Data.Authentication
 @using PayTech.BackOffice.Data.Types
+@using PayTech.BackOffice.Services.Email
 @inject UserDbContext DB
 @inject NavigationManager NavigationManager
+@inject UserManager<ApplicationUser> UserManager
+@inject GeolocationService GeolocationService
+@inject ICustomerEmailService CustomerEmailService
 
 <PageTitle>Edit User @ApplicationUser</PageTitle>
+
+<Toasts class="p-3" Messages="messages" Placement="ToastsPlacement.TopRight" />
 
 <div class="container my-4">
     <div class="row justify-content-center">
@@ -19,7 +26,6 @@
                     </a>
                 </div>
                 <div class="card-body">
-                    <Notification Message="@NotificationMessage" Type="@NotificationType" Duration="3000" />
 
                     @if (ApplicationUser is null)
                     {
@@ -160,6 +166,22 @@
                                 </button>
                             </div>
                         </EditForm>
+
+
+                        <hr />
+
+                        <h4>Last Login Information</h4>
+                        <p>Last Login: @ApplicationUser.LastLoginDate</p>
+                        <p>IP Address: @ApplicationUser.LastUsedIpAddress</p>
+                        @if (GeoLocation != null)
+                        {
+                            <p>Location: @GeoLocation.City, @GeoLocation.Region, @GeoLocation.Country</p>
+                            <p>Coordinates: @GeoLocation.Latitude, @GeoLocation.Longitude</p>
+                        }
+
+                        <div class="mt-3">
+                            <button class="btn btn-warning" @onclick="ResetPassword">Reset Password</button>
+                        </div>
                     }
                 </div>
             </div>
@@ -169,8 +191,7 @@
 
 @code {
 
-    private string NotificationMessage { get; set; }
-    private Notification.NotificationType NotificationType { get; set; }
+
 
 
     [SupplyParameterFromQuery] public string Id { get; set; }
@@ -203,6 +224,11 @@
 
             SelectedRoleIds = userRoles.Select(r => r.RoleId).ToArray();
             AllRoles = await DB.Roles.ToListAsync();
+
+            if (ApplicationUser != null && !string.IsNullOrEmpty(ApplicationUser.LastUsedIpAddress))
+            {
+                GeoLocation = await GeolocationService.GetGeolocationDataAsync(ApplicationUser.LastUsedIpAddress);
+            }
         }
     }
 
@@ -228,8 +254,8 @@
             }
 
             await DB.SaveChangesAsync();
-            ClearErrorMessage();
-            ShowNotificationMessage("User Profile Updated", Notification.NotificationType.Success);
+            
+            ShowToast(ToastType.Success, "User Profile Updated");
         }
         catch (DbUpdateConcurrencyException ex)
         {
@@ -242,29 +268,65 @@
                 throw;
             }
 
-            ClearErrorMessage();
-            ShowNotificationMessage(ex.Message, Notification.NotificationType.Success);
+            
+            ShowToast(ToastType.Success, ex.Message);
         }
     }
 
     bool ApplicationUserExists(string id)
     {
-        var roles = DB.UserRoles.Where(r => r.UserId == ApplicationUser.Id).ToList();
+       // var roles = DB.UserRoles.Where(r => r.UserId == ApplicationUser.Id).ToList();
 
         return DB.Users.Any(e => e.Id == id);
     }
 
-    private void ClearErrorMessage()
+    
+
+    private GeoLocationData GeoLocation { get; set; }
+    private List<ToastMessage> messages = new();
+
+   
+
+    private void ShowToast(ToastType type, string message)
     {
-        ShowNotificationMessage("", Notification.NotificationType.Info);
+        messages.Add(new ToastMessage { Type = type, Message = message });
     }
 
-    private void ShowNotificationMessage(string message, Notification.NotificationType type)
+    private async Task ResetPassword()
     {
-        NotificationMessage = message;
-        NotificationType = type;
+        var token = await UserManager.GeneratePasswordResetTokenAsync(this.ApplicationUser);
+        var newPassword = PasswordGenerationService.GenerateRandomPassword();
+        var result = await UserManager.ResetPasswordAsync(ApplicationUser, token, newPassword);
 
-        StateHasChanged();
+        if (result.Succeeded)
+        {
+            await SendPasswordResetEmail(newPassword);
+            ShowToast(ToastType.Success, "Password reset. Check user's email.");
+        }
+        else
+        {
+            ShowToast(ToastType.Danger, "Failed to reset password");
+        }
+    }
+
+    private async Task SendPasswordResetEmail(string newPassword)
+    {
+        var templateData = new PasswordResetEmailTemplateModel
+        {
+                FirstName = ApplicationUser.FirstName,
+            newPassword = newPassword
+            // ResetLink = GeneratePasswordResetLink()
+        };
+
+        try
+        {
+            await CustomerEmailService.SendCustomerTemplatedEmailAsync(ApplicationUser.Email, EmailTemplatesList.PasswordReset.ToString(), templateData);
+            ShowToast(ToastType.Info, "Password reset email sent to the user.");
+        }
+        catch (Exception ex)
+        {
+            ShowToast(ToastType.Warning, "Failed to send password reset email: " + ex.Message);
+        }
     }
 
 }
