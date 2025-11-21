@@ -1,0 +1,15 @@
+@code {
+    [Parameter] public string Label { get; set; } = string.Empty;
+    [Parameter] public object? Value { get; set; }
+    [Parameter] public string LabelColumns { get; set; } = "col-5 col-md-3";
+    [Parameter] public string ValueColumns { get; set; } = "col-7 col-md-9";
+    [Parameter] public string LabelClass { get; set; } = "text-end";
+    [Parameter] public string? EmptyValueDisplay { get; set; } = "-";
+
+    private string DisplayValue => Value?.ToString() ?? EmptyValueDisplay ?? string.Empty;
+}
+
+<div class="row">
+    <div class="@LabelColumns @LabelClass">@Label:</div>
+    <div class="@ValueColumns">@DisplayValue</div>
+</div>

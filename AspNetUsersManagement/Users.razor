@@ -2,7 +2,7 @@
 @using Microsoft.AspNetCore.Components.QuickGrid
 @using Microsoft.AspNetCore.Identity
 @using PayTech.BackOffice.Core
-@inject UserDbContext DB
+@inject UserDbContext UserDb
 @inject AuthenticationService AuthService
 @inject IEmailSender<ApplicationUser> EmailSender
 @inject IJSRuntime JSRuntime
@@ -15,10 +15,10 @@
     <h1 class="mb-4"><i class="bi bi-people-fill me-2"></i>User Management</h1>
 
     <div class="row mb-4">
-        <StatCard Title="Total Users" Icon="bi bi-people" Value="@DB.Users.Count()" BackgroundColor="bg-primary" />
-        <StatCard Title="Confirmed Emails" Icon="bi bi-check-circle" Value="@DB.Users.Count(u => u.EmailConfirmed)" BackgroundColor="bg-success" />
-        <StatCard Title="Confirmed Phones" Icon="bi bi-phone" Value="@DB.Users.Count(u => u.PhoneNumberConfirmed)" BackgroundColor="bg-warning" TextColor="text-dark" />
-        <StatCard Title="Locked Out" Icon="bi bi-lock" Value="@DB.Users.Count(u => u.LockoutEnd > DateTime.Now)" BackgroundColor="bg-danger" />
+        <StatCard Title="Total Users" Icon="bi bi-people" Value="@UserDb.Users.Count()" BackgroundColor="bg-primary" />
+        <StatCard Title="Confirmed Emails" Icon="bi bi-check-circle" Value="@UserDb.Users.Count(u => u.EmailConfirmed)" BackgroundColor="bg-success" />
+        <StatCard Title="Confirmed Phones" Icon="bi bi-phone" Value="@UserDb.Users.Count(u => u.PhoneNumberConfirmed)" BackgroundColor="bg-warning" TextColor="text-dark" />
+        <StatCard Title="Locked Out" Icon="bi bi-lock" Value="@UserDb.Users.Count(u => u.LockoutEnd > DateTime.Now)" BackgroundColor="bg-danger" />
     </div>
 
     <div class="card mb-4">
@@ -154,7 +154,7 @@
     private Modal userDetailsModal;
     private ApplicationUser selectedUser;
 
-    private IQueryable<ApplicationUser> FilteredUsers => DB.Users.Where(u =>
+    private IQueryable<ApplicationUser> FilteredUsers => UserDb.Users.Where(u =>
         string.IsNullOrEmpty(SearchTerm) ||
         u.FirstName.Contains(SearchTerm) ||
         u.LastName.Contains(SearchTerm) ||
@@ -173,21 +173,21 @@
         bool confirmed = await JSRuntime.InvokeAsync<bool>("confirm", $"Are you sure you want to delete {user.Email}?");
         if (confirmed)
         {
-            DB.Users.Remove(user);
-            DB.SaveChanges();
+            UserDb.Users.Remove(user);
+            UserDb.SaveChanges();
         }
     }
 
     private async Task LockUser(ApplicationUser user)
     {
         user.LockoutEnd = DateTime.UtcNow.AddYears(1);
-        DB.SaveChanges();
+        UserDb.SaveChanges();
     }
 
     private async Task UnlockUser(ApplicationUser user)
     {
         user.LockoutEnd = null;
-        DB.SaveChanges();
+        UserDb.SaveChanges();
     }
 
     private async Task ShowUserDetails(ApplicationUser user)

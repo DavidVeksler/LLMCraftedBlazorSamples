@@ -2,8 +2,8 @@
 @using Microsoft.EntityFrameworkCore
 @using PayTech.BackOffice.Data.Authentication
 @using PayTech.BackOffice.Data.Types
-@inject UserDbContext UserDB
-@inject PayTechDbContext PayTechDB
+@inject UserDbContext UserDb
+@inject PayTechDbContext PayTechDb
 @inject NavigationManager NavigationManager
 
 <PageTitle>User Details - @ApplicationUser?.FullName</PageTitle>
@@ -185,7 +185,7 @@
     {
         if (ApplicationUser != null)
         {
-            VerificationCodes = await PayTechDB.CustomerVerificationCodes
+            VerificationCodes = await PayTechDb.CustomerVerificationCodes
             .Where(c => c.CustomerId == ApplicationUser.Id)
             .OrderByDescending(c => c.CreatedAt)
             .ToListAsync();
@@ -196,19 +196,19 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ApplicationUser = UserDB.Users
+        ApplicationUser = UserDb.Users
         .FirstOrDefault(m => m.Id == Id);
 
         if (ApplicationUser is not null)
         {
             // Fetch counts from PayTechDB
-            VerificationCodesCount = PayTechDB.CustomerVerificationCodes
+            VerificationCodesCount = PayTechDb.CustomerVerificationCodes
             .Count(c => c.CustomerId == ApplicationUser.Id);
 
-            KycVerificationsCount =  PayTechDB.CustomerKycVerifications
+            KycVerificationsCount =  PayTechDb.CustomerKycVerifications
             .Count(c => c.CustomerId == ApplicationUser.Id);
 
-            TransactionsCount =  PayTechDB.Transactions
+            TransactionsCount =  PayTechDb.Transactions
             .Count(t => t.CustomerId == ApplicationUser.Id);
         }
         else

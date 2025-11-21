@@ -1,6 +1,8 @@
 ﻿@page "/logs"
 @using PayTech.BackOffice.BackOfficeWeb.Controllers
 @using PayTech.BackOffice.BackOfficeWeb.Services
+@using LLMCraftedBlazorSamples.Shared
+@using LLMCraftedBlazorSamples.Shared.Models
 @inject HttpClient HttpClient
 @inject NavigationManager NavigationManager
 @inject IJSRuntime JSRuntime
@@ -23,19 +25,19 @@
 
         <StatCard Title="Info Logs"
                   Icon="bi bi-info-circle-fill"
-                  Value="@(logEntries?.Count(e => e.Type == "INF") ?? 0)"
+                  Value="@(logEntries?.Count(e => e.Type == LogLevel.Info.ToShortString()) ?? 0)"
                   BackgroundColor="bg-info"
                   TextColor="text-white" />
 
         <StatCard Title="Warnings"
                   Icon="bi bi-exclamation-triangle-fill"
-                  Value="@(logEntries?.Count(e => e.Type == "WRN") ?? 0)"
+                  Value="@(logEntries?.Count(e => e.Type == LogLevel.Warning.ToShortString()) ?? 0)"
                   BackgroundColor="bg-warning"
                   TextColor="text-dark" />
 
         <StatCard Title="Errors"
                   Icon="bi bi-x-circle-fill"
-                  Value="@(logEntries?.Count(e => e.Type == "ERR") ?? 0)"
+                  Value="@(logEntries?.Count(e => e.Type == LogLevel.Error.ToShortString()) ?? 0)"
                   BackgroundColor="bg-danger"
                   TextColor="text-white" />
     </div>
@@ -215,16 +217,15 @@
 
     protected override async Task OnInitializedAsync()
     {
-        webApps = Directory.GetDirectories("C:\\web").Select(Path.GetFileName).ToList();
+        webApps = Directory.GetDirectories(AppConstants.Paths.WebAppsDirectory).Select(Path.GetFileName).ToList();
         var baseUri = NavigationManager.BaseUri;
         HttpClient.BaseAddress = new Uri(baseUri);
-
 
         new System.Threading.Timer(async _ =>
         {
             await LoadLogContent();
             await InvokeAsync(StateHasChanged);
-        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(5));
+        }, null, TimeSpan.Zero, TimeSpan.FromMinutes(AppConstants.Timeouts.LogRefreshMinutes));
     }
 
     private async Task OnWebAppSelectionChanged(ChangeEventArgs e)
@@ -293,9 +294,9 @@
     private void FilterLogs()
     {
         filteredLogEntries = logEntries
-            .Where(e => (showInfo && e.Type == "INF") ||
-                        (showWarning && e.Type == "WRN") ||
-                        (showError && e.Type == "ERR"))
+            .Where(e => (showInfo && e.Type == LogLevel.Info.ToShortString()) ||
+                        (showWarning && e.Type == LogLevel.Warning.ToShortString()) ||
+                        (showError && e.Type == LogLevel.Error.ToShortString()))
             .Where(e => string.IsNullOrEmpty(searchTerm) ||
                         e.Message.Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
             .OrderByDescending(e => e.Timestamp)
