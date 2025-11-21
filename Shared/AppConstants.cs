@@ -15,7 +15,13 @@ public static class AppConstants
 
     public static class Api
     {
-        public const string BitPayWebhookUrl = "https://api-test.test.paytech.systems/api/BitPayWebhook";
+        // Set this flag appropriately in your application startup/configuration
+        public static bool IsProduction = false;
+
+        public static string BitPayWebhookUrl =>
+            IsProduction
+                ? "https://api.paytech.systems/api/BitPayWebhook"
+                : "https://api-test.test.paytech.systems/api/BitPayWebhook";
     }
 
     public static class Timeouts
