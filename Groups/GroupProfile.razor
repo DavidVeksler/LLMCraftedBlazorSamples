@@ -1,0 +1,209 @@
+@page "/Groups/profile"
+@using Microsoft.AspNetCore.Components.Forms
+@using LLMCraftedBlazorSamples.Shared.Models
+@using LLMCraftedBlazorSamples.Shared.Data
+@inject ClinicDbContext ClinicDb
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Group Profile - @(CurrentGroup?.GroupName ?? "Loading...")</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="mb-4" style="color: #8B4513;">
+        <i class="bi bi-people-fill me-2"></i>Groups
+        <span style="font-size: 0.6em; margin-left: 20px;">
+            <a href="/Groups/list" class="text-decoration-none text-muted">LIST</a>
+            <a href="/Groups/profile?id=@GroupId" class="text-decoration-none">( PROFILE )</a>
+            <a href="#" class="text-decoration-none text-muted">USERS</a>
+        </span>
+    </h1>
+
+    @if (CurrentGroup == null)
+    {
+        <div class="alert alert-info">Loading group information...</div>
+    }
+    else
+    {
+        <EditForm Model="CurrentGroup" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+
+            <div class="card mb-4">
+                <div class="card-body" style="background-color: #FFFACD;">
+
+                    <div class="row mb-3">
+                        <div class="col-md-12 text-end">
+                            <label class="fw-bold me-2">Status:</label>
+                            <select class="form-select form-select-sm d-inline-block" style="width: auto;">
+                                <option selected>Active</option>
+                                <option>Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="p-3" style="background-color: white; border: 1px solid #dee2e6;">
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                        <label class="fw-bold">Group @CurrentGroup.GroupId</label>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <label class="fw-bold">ID:</label>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                        <label class="fw-bold">Group Name:</label>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <InputText @bind-Value="CurrentGroup.GroupName" class="form-control form-control-sm" />
+                                        <ValidationMessage For="@(() => CurrentGroup.GroupName)" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                        <label class="fw-bold">Email:</label>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <InputText @bind-Value="CurrentGroup.Description" class="form-control form-control-sm" placeholder="Contact email" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-3 mt-4">
+                                    <div class="col-md-12">
+                                        <h6 class="fw-bold" style="color: #8B4513;">Main Address</h6>
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                        <label class="fw-bold">Address:</label>
+                                    </div>
+                                    <div class="col-md-8">
+                                        <InputText @bind-Value="CurrentGroup.Address1" class="form-control form-control-sm" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                    </div>
+                                    <div class="col-md-8">
+                                        <InputText @bind-Value="CurrentGroup.Address2" class="form-control form-control-sm" placeholder="Address Line 2" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                        <label class="fw-bold">City:</label>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <InputText @bind-Value="CurrentGroup.City" class="form-control form-control-sm" />
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <label class="fw-bold">State/Province:</label>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <InputText @bind-Value="CurrentGroup.State" class="form-control form-control-sm" maxlength="20" />
+                                    </div>
+                                </div>
+
+                                <div class="row mb-2">
+                                    <div class="col-md-3 text-end">
+                                    </div>
+                                    <div class="col-md-4">
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <label class="fw-bold">Zip/Post Code:</label>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <InputText @bind-Value="CurrentGroup.Zip" class="form-control form-control-sm" maxlength="20" />
+                                    </div>
+                                </div>
+
+                                @if (CurrentGroup.CreatedDate.HasValue || CurrentGroup.LastUpdate.HasValue)
+                                {
+                                    <div class="row mb-2 mt-4">
+                                        <div class="col-md-12">
+                                            <small class="text-muted">
+                                                @if (CurrentGroup.CreatedDate.HasValue)
+                                                {
+                                                    <span>Created: @CurrentGroup.CreatedDate.Value.ToString("MM/dd/yyyy") | </span>
+                                                }
+                                                @if (CurrentGroup.LastUpdate.HasValue)
+                                                {
+                                                    <span>Last Updated: @CurrentGroup.LastUpdate.Value.ToString("MM/dd/yyyy")</span>
+                                                }
+                                            </small>
+                                        </div>
+                                    </div>
+                                }
+
+                                <div class="row mt-4">
+                                    <div class="col-md-12 text-end">
+                                        <button type="button" class="btn btn-secondary me-2" @onclick="Cancel">
+                                            <i class="bi bi-x-circle me-1"></i>Cancel
+                                        </button>
+                                        <button type="submit" class="btn" style="background-color: #FF6B35; color: white;">
+                                            <span style="font-size: 1.2em;">▶</span> <strong>SAVE</strong>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </EditForm>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery]
+    public int? Id { get; set; }
+
+    private int GroupId => Id ?? 0;
+    private Group? CurrentGroup { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (GroupId > 0)
+        {
+            CurrentGroup = await ClinicDb.Groups
+                .Where(g => g.GroupId == GroupId)
+                .FirstOrDefaultAsync();
+
+            if (CurrentGroup == null)
+            {
+                await JSRuntime.InvokeVoidAsync("alert", $"Group with ID {GroupId} not found.");
+                NavigationManager.NavigateTo("/Groups");
+            }
+        }
+        else
+        {
+            await JSRuntime.InvokeVoidAsync("alert", "Invalid Group ID.");
+            NavigationManager.NavigateTo("/Groups");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            CurrentGroup.LastUpdate = DateTime.Now;
+            await ClinicDb.SaveChangesAsync();
+
+            await JSRuntime.InvokeVoidAsync("alert", "Group information updated successfully!");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error saving group: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/Groups");
+    }
+}

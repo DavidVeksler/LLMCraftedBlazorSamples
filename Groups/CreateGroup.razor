@@ -1,0 +1,162 @@
+@page "/Groups/create"
+@using Microsoft.AspNetCore.Components.Forms
+@using LLMCraftedBlazorSamples.Shared.Models
+@using LLMCraftedBlazorSamples.Shared.Data
+@inject ClinicDbContext ClinicDb
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Create New Group</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="mb-4" style="color: #8B4513;">
+        <i class="bi bi-people-fill me-2"></i>Groups
+        <span style="font-size: 0.6em; margin-left: 20px;">
+            <a href="/Groups/list" class="text-decoration-none text-muted">LIST</a>
+            <a href="#" class="text-decoration-none">( NEW GROUP )</a>
+        </span>
+    </h1>
+
+    <EditForm Model="NewGroup" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="card mb-4">
+            <div class="card-body" style="background-color: #FFFACD;">
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="p-3" style="background-color: white; border: 1px solid #dee2e6;">
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                    <label class="fw-bold">Group Name: <span class="text-danger">*</span></label>
+                                </div>
+                                <div class="col-md-6">
+                                    <InputText @bind-Value="NewGroup.GroupName" class="form-control form-control-sm" />
+                                    <ValidationMessage For="@(() => NewGroup.GroupName)" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                    <label class="fw-bold">Group Code:</label>
+                                </div>
+                                <div class="col-md-2">
+                                    <InputText @bind-Value="NewGroup.GroupCode" class="form-control form-control-sm" maxlength="4" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                    <label class="fw-bold">Email:</label>
+                                </div>
+                                <div class="col-md-6">
+                                    <InputText @bind-Value="NewGroup.Description" class="form-control form-control-sm" placeholder="Contact email" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-3 mt-4">
+                                <div class="col-md-12">
+                                    <h6 class="fw-bold" style="color: #8B4513;">Main Address</h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                    <label class="fw-bold">Address:</label>
+                                </div>
+                                <div class="col-md-8">
+                                    <InputText @bind-Value="NewGroup.Address1" class="form-control form-control-sm" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                </div>
+                                <div class="col-md-8">
+                                    <InputText @bind-Value="NewGroup.Address2" class="form-control form-control-sm" placeholder="Address Line 2" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                    <label class="fw-bold">City:</label>
+                                </div>
+                                <div class="col-md-4">
+                                    <InputText @bind-Value="NewGroup.City" class="form-control form-control-sm" />
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <label class="fw-bold">State/Province:</label>
+                                </div>
+                                <div class="col-md-2">
+                                    <InputText @bind-Value="NewGroup.State" class="form-control form-control-sm" maxlength="20" />
+                                </div>
+                            </div>
+
+                            <div class="row mb-2">
+                                <div class="col-md-3 text-end">
+                                </div>
+                                <div class="col-md-4">
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <label class="fw-bold">Zip/Post Code:</label>
+                                </div>
+                                <div class="col-md-2">
+                                    <InputText @bind-Value="NewGroup.Zip" class="form-control form-control-sm" maxlength="20" />
+                                </div>
+                            </div>
+
+                            <div class="row mt-4">
+                                <div class="col-md-12 text-end">
+                                    <button type="button" class="btn btn-secondary me-2" @onclick="Cancel">
+                                        <i class="bi bi-x-circle me-1"></i>Cancel
+                                    </button>
+                                    <button type="submit" class="btn" style="background-color: #FF6B35; color: white;">
+                                        <span style="font-size: 1.2em;">▶</span> <strong>CREATE GROUP</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </EditForm>
+</div>
+
+@code {
+    private Group NewGroup { get; set; } = new Group();
+
+    protected override void OnInitialized()
+    {
+        NewGroup = new Group
+        {
+            CreatedDate = DateTime.Now,
+            LastUpdate = DateTime.Now
+        };
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        try
+        {
+            NewGroup.CreatedDate = DateTime.Now;
+            NewGroup.LastUpdate = DateTime.Now;
+
+            ClinicDb.Groups.Add(NewGroup);
+            await ClinicDb.SaveChangesAsync();
+
+            await JSRuntime.InvokeVoidAsync("alert", $"Group '{NewGroup.GroupName}' created successfully!");
+            NavigationManager.NavigateTo($"/Groups/profile?id={NewGroup.GroupId}");
+        }
+        catch (Exception ex)
+        {
+            await JSRuntime.InvokeVoidAsync("alert", $"Error creating group: {ex.Message}");
+        }
+    }
+
+    private void Cancel()
+    {
+        NavigationManager.NavigateTo("/Groups");
+    }
+}

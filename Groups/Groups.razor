@@ -1,0 +1,203 @@
+@page "/Groups"
+@page "/Groups/list"
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using LLMCraftedBlazorSamples.Shared.Models
+@using LLMCraftedBlazorSamples.Shared.Data
+@inject ClinicDbContext ClinicDb
+@inject NavigationManager NavigationManager
+@inject IJSRuntime JSRuntime
+
+<PageTitle>Groups</PageTitle>
+
+<div class="container-fluid">
+    <h1 class="mb-4" style="color: #8B4513;">
+        <i class="bi bi-people-fill me-2"></i>Groups
+        <span style="font-size: 0.6em; margin-left: 20px;">
+            <a href="/Groups/list" class="text-decoration-none">( LIST )</a>
+            <a href="#" class="text-decoration-none text-muted">PROFILE</a>
+            <a href="#" class="text-decoration-none text-muted">USERS</a>
+        </span>
+    </h1>
+
+    <div class="row mb-4">
+        <StatCard Title="Total Groups" Icon="bi bi-building" Value="@ClinicDb.Groups.Count()" BackgroundColor="bg-primary" />
+        <StatCard Title="Active Groups" Icon="bi bi-check-circle" Value="@ClinicDb.Groups.Count()" BackgroundColor="bg-success" />
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body" style="background-color: #FFFACD;">
+            <div class="row align-items-center mb-3">
+                <div class="col-md-4">
+                    <label class="fw-bold">GROUP SEARCH</label>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select form-select-sm" @bind="SearchField">
+                        <option value="GroupName">Group Name</option>
+                        <option value="GroupId">Group ID</option>
+                        <option value="City">City</option>
+                        <option value="State">State</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input type="text" class="form-control form-control-sm" placeholder="Search..." @bind="SearchTerm" @bind:event="oninput">
+                </div>
+                <div class="col-md-1">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ClearSearch">
+                        <span style="color: #FF6B35;">GO</span> <span style="font-size: 1.2em;">▶</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="row mb-3">
+                <div class="col-md-12 text-start">
+                    <a href="/Groups/create" class="btn btn-sm" style="color: #FF6B35;">
+                        <span style="font-size: 1.2em;">▶</span> <strong>NEW GROUP</strong>
+                    </a>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <span class="fw-bold">Page @CurrentPage of @TotalPages (@((CurrentPage - 1) * PageSize + 1)-@Math.Min(CurrentPage * PageSize, TotalGroups) of @TotalGroups)</span>
+                </div>
+                <div>
+                    <select class="form-select form-select-sm" style="width: auto; display: inline-block;">
+                        <option>View...</option>
+                        <option>10 per page</option>
+                        <option>25 per page</option>
+                        <option>50 per page</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered" style="background-color: #00305A; color: white;">
+                    <thead>
+                        <tr>
+                            <th style="background-color: #00305A; color: white;">Group ID</th>
+                            <th style="background-color: #00305A; color: white;">Name</th>
+                            <th style="background-color: #00305A; color: white;"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var group in PaginatedGroups)
+                        {
+                            var rowClass = @PaginatedGroups.ToList().IndexOf(group) % 2 == 0 ? "" : "table-warning";
+                            <tr class="@rowClass" style="cursor: pointer;" @onclick="() => NavigateToProfile(group.GroupId)">
+                                <td>
+                                    <div>@group.GroupId</div>
+                                    <div><small>@group.Status</small></div>
+                                </td>
+                                <td>
+                                    <div>
+                                        <a href="/Groups/profile?id=@group.GroupId" class="text-decoration-none">
+                                            @group.GroupName
+                                        </a>
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(group.Address1))
+                                    {
+                                        <div><small>@group.Address1</small></div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(group.Address2))
+                                    {
+                                        <div><small>@group.Address2</small></div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(group.City) || !string.IsNullOrEmpty(group.State) || !string.IsNullOrEmpty(group.Zip))
+                                    {
+                                        <div>
+                                            <small>
+                                                @group.City@(string.IsNullOrEmpty(group.City) ? "" : ", ")@group.State @group.Zip
+                                            </small>
+                                        </div>
+                                    }
+                                    @if (!string.IsNullOrEmpty(group.Description))
+                                    {
+                                        <div><small>@group.Description</small></div>
+                                    }
+                                </td>
+                                <td>
+                                    <a href="/Groups/users?id=@group.GroupId" class="text-decoration-none">Users &gt;&gt;</a>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="PreviousPage" disabled="@(CurrentPage == 1)">
+                        &lt; Previous
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary ms-2" @onclick="NextPage" disabled="@(CurrentPage >= TotalPages)">
+                        Next &gt;
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string SearchTerm = "";
+    private string SearchField = "GroupName";
+    private int CurrentPage = 1;
+    private int PageSize = 10;
+
+    private IQueryable<Group> FilteredGroups
+    {
+        get
+        {
+            var query = ClinicDb.Groups.AsQueryable();
+
+            if (!string.IsNullOrEmpty(SearchTerm))
+            {
+                query = SearchField switch
+                {
+                    "GroupName" => query.Where(g => g.GroupName.Contains(SearchTerm)),
+                    "GroupId" => int.TryParse(SearchTerm, out var id) ? query.Where(g => g.GroupId == id) : query,
+                    "City" => query.Where(g => g.City != null && g.City.Contains(SearchTerm)),
+                    "State" => query.Where(g => g.State != null && g.State.Contains(SearchTerm)),
+                    _ => query
+                };
+            }
+
+            return query.OrderBy(g => g.GroupId);
+        }
+    }
+
+    private IEnumerable<Group> PaginatedGroups => FilteredGroups
+        .Skip((CurrentPage - 1) * PageSize)
+        .Take(PageSize)
+        .ToList();
+
+    private int TotalGroups => FilteredGroups.Count();
+    private int TotalPages => (int)Math.Ceiling((double)TotalGroups / PageSize);
+
+    private void NavigateToProfile(int groupId)
+    {
+        NavigationManager.NavigateTo($"/Groups/profile?id={groupId}");
+    }
+
+    private void ClearSearch()
+    {
+        SearchTerm = "";
+        CurrentPage = 1;
+    }
+
+    private void PreviousPage()
+    {
+        if (CurrentPage > 1)
+        {
+            CurrentPage--;
+        }
+    }
+
+    private void NextPage()
+    {
+        if (CurrentPage < TotalPages)
+        {
+            CurrentPage++;
+        }
+    }
+}

@@ -10,6 +10,8 @@ A curated collection of C# and Blazor code samples, components, and utilities ge
 - **BitPayPaymentsTester**: Tools for testing and simulating BitPay payment flows
 - **StrikePaymentsTester**: Utilities for testing Strike payment integrations
 - **TransactionErrorReport**: Reporting tools for transaction error analysis
+- **AspNetUsersManagement**: User management interface with authentication and authorization
+- **Groups**: Oracle-based group management system with list, profile, and create functionality
 
 ![Email Templates](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/EmailTemplates/Screenshot%202024-07-10%20103238.png?raw=true)
 ![Transaction Errors Report](https://github.com/DavidVeksler/LLMCraftedBlazorSamples/blob/main/TransactionErrorReport/Screenshot%202024-07-10%20111726.png?raw=true)
