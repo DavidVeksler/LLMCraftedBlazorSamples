@@ -5,11 +5,12 @@
     [Parameter] public string ValueColumns { get; set; } = "col-7 col-md-9";
     [Parameter] public string LabelClass { get; set; } = "text-end";
     [Parameter] public string? EmptyValueDisplay { get; set; } = "-";
+    [Parameter] public string RowClass { get; set; } = "mb-2";
 
     private string DisplayValue => Value?.ToString() ?? EmptyValueDisplay ?? string.Empty;
 }
 
-<div class="row">
+<div class="row @RowClass">
     <div class="@LabelColumns @LabelClass">@Label:</div>
     <div class="@ValueColumns">@DisplayValue</div>
 </div>
