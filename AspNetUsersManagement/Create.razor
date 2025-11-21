@@ -1,6 +1,6 @@
 ﻿@page "/Users/create"
 @using PayTech.BackOffice.Data.Authentication
-@inject UserDbContext DB
+@inject UserDbContext UserDb
 @inject NavigationManager NavigationManager
 
 <PageTitle>Create</PageTitle>
@@ -110,8 +110,8 @@
     // To protect from overposting attacks, see https://aka.ms/RazorPagesCRUD
     public async Task AddApplicationUser()
     {
-        DB.Users.Add(ApplicationUser);
-        await DB.SaveChangesAsync();
+        UserDb.Users.Add(ApplicationUser);
+        await UserDb.SaveChangesAsync();
         NavigationManager.NavigateTo("/Users");
     }
 

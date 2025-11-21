@@ -5,7 +5,7 @@
 @using PayTech.BackOffice.Data.Authentication
 @using PayTech.BackOffice.Data.Types
 @using PayTech.BackOffice.Services.Email
-@inject UserDbContext DB
+@inject UserDbContext UserDb
 @inject NavigationManager NavigationManager
 @inject UserManager<ApplicationUser> UserManager
 @inject GeolocationService GeolocationService
@@ -205,11 +205,11 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ApplicationUser ??= await DB.Users.FirstOrDefaultAsync(m => m.Id == Id);
+        ApplicationUser ??= await UserDb.Users.FirstOrDefaultAsync(m => m.Id == Id);
 
         // ApplicationUser.ApplicationUser ??= PayTechDbContext.ApplicationUsers.Where(p => p.CustomerId == Id).FirstOrDefault();
 
-        // ApplicationUser.ApplicationUser = await DB.ApplicationUsers.FirstOrDefaultAsync(cp => cp.CustomerId == ApplicationUser.Id);
+        // ApplicationUser.ApplicationUser = await UserDb.ApplicationUsers.FirstOrDefaultAsync(cp => cp.CustomerId == ApplicationUser.Id);
 
         if (ApplicationUser is null)
         {
@@ -218,12 +218,12 @@
 
         if (ApplicationUser is not null)
         {
-            var userRoles = await DB.UserRoles
+            var userRoles = await UserDb.UserRoles
                 .Where(r => r.UserId == ApplicationUser.Id)
                 .ToListAsync();
 
             SelectedRoleIds = userRoles.Select(r => r.RoleId).ToArray();
-            AllRoles = await DB.Roles.ToListAsync();
+            AllRoles = await UserDb.Roles.ToListAsync();
 
             if (ApplicationUser != null && !string.IsNullOrEmpty(ApplicationUser.LastUsedIpAddress))
             {
@@ -236,24 +236,24 @@
     // For more details, see https://aka.ms/RazorPagesCRUD.
     public async Task UpdateApplicationUser()
     {
-        DB.Attach(ApplicationUser).State = EntityState.Modified;
+        UserDb.Attach(ApplicationUser).State = EntityState.Modified;
 
         try
         {
-            var existingRoles = await DB.UserRoles
+            var existingRoles = await UserDb.UserRoles
                 .Where(r => r.UserId == ApplicationUser.Id)
                 .ToListAsync();
-            DB.UserRoles.RemoveRange(existingRoles);
+            UserDb.UserRoles.RemoveRange(existingRoles);
             foreach (var roleId in SelectedRoleIds)
             {
-                DB.UserRoles.Add(new IdentityUserRole<string>
+                UserDb.UserRoles.Add(new IdentityUserRole<string>
                 {
                     UserId = ApplicationUser.Id,
                     RoleId = roleId
                 });
             }
 
-            await DB.SaveChangesAsync();
+            await UserDb.SaveChangesAsync();
             
             ShowToast(ToastType.Success, "User Profile Updated");
         }
@@ -275,9 +275,9 @@
 
     bool ApplicationUserExists(string id)
     {
-       // var roles = DB.UserRoles.Where(r => r.UserId == ApplicationUser.Id).ToList();
+       // var roles = UserDb.UserRoles.Where(r => r.UserId == ApplicationUser.Id).ToList();
 
-        return DB.Users.Any(e => e.Id == id);
+        return UserDb.Users.Any(e => e.Id == id);
     }
 
     

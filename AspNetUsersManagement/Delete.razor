@@ -1,7 +1,7 @@
 ﻿@page "/Users/delete"
 @using Microsoft.EntityFrameworkCore
 @using PayTech.BackOffice.Data.Authentication
-@inject UserDbContext DB
+@inject UserDbContext UserDb
 @inject NavigationManager NavigationManager
 
 <PageTitle>Delete</PageTitle>
@@ -98,7 +98,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        ApplicationUser = await DB.Users.FirstOrDefaultAsync(m => m.Id == Id);
+        ApplicationUser = await UserDb.Users.FirstOrDefaultAsync(m => m.Id == Id);
 
         if (ApplicationUser is null)
         {
@@ -108,8 +108,8 @@
 
     public async Task DeleteApplicationUser()
     {
-        DB.Users.Remove(ApplicationUser!);
-        await DB.SaveChangesAsync();
+        UserDb.Users.Remove(ApplicationUser!);
+        await UserDb.SaveChangesAsync();
         NavigationManager.NavigateTo("/Users");
     }
 

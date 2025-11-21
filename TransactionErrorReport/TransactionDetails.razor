@@ -1,60 +1,23 @@
 ﻿@using Microsoft.EntityFrameworkCore
 @using PayTech.BackOffice.Data.Models
-@inject PayTechDbContext _dbContext
+@inject PayTechDbContext DbContext
 
 <div class="card">
     <div class="card-body">
         <h4 class="card-title">Transaction Details</h4>
 
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Transaction ID:</div>
-            <div class="col-7 col-md-9">@transaction?.TransactionId</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Customer ID:</div>
-            <div class="col-7 col-md-9">@transaction?.CustomerId</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Payment Amount:</div>
-            <div class="col-7 col-md-9">@transaction?.PaymentAmount</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Payout Amount:</div>
-            <div class="col-7 col-md-9">@transaction?.PayoutAmount</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Deposit Currency:</div>
-            <div class="col-7 col-md-9">@transaction?.DepositCurrency</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Payout Currency:</div>
-            <div class="col-7 col-md-9">@transaction?.PayoutCurrency</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Fee USD:</div>
-            <div class="col-7 col-md-9">@transaction?.FeeUSD</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Transaction Type:</div>
-            <div class="col-7 col-md-9">@(transaction?.TransactionType.HasValue == true ? transaction.TransactionType.Value.ToString() : "-")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Transaction Status:</div>
-            <div class="col-7 col-md-9">@(transaction?.Status.HasValue == true ? transaction.Status.Value.ToString() : "-")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Created At:</div>
-            <div class="col-7 col-md-9">@(transaction?.CreatedAt.HasValue == true ? transaction.CreatedAt.Value.ToLocalTime().ToString("MM/dd/yyyy HH:mm") : "-")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Updated At:</div>
-            <div class="col-7 col-md-9">@(transaction?.UpdatedAt.HasValue == true ? transaction.UpdatedAt.Value.ToLocalTime().ToString("MM/dd/yyyy HH:mm") : "-")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Secret Key:</div>
-            <div class="col-7 col-md-9">@transaction?.SecretKey</div>
-        </div>
-
+        <FieldDisplay Label="Transaction ID" Value="@transaction?.TransactionId" />
+        <FieldDisplay Label="Customer ID" Value="@transaction?.CustomerId" />
+        <FieldDisplay Label="Payment Amount" Value="@transaction?.PaymentAmount" />
+        <FieldDisplay Label="Payout Amount" Value="@transaction?.PayoutAmount" />
+        <FieldDisplay Label="Deposit Currency" Value="@transaction?.DepositCurrency" />
+        <FieldDisplay Label="Payout Currency" Value="@transaction?.PayoutCurrency" />
+        <FieldDisplay Label="Fee USD" Value="@transaction?.FeeUSD" />
+        <FieldDisplay Label="Transaction Type" Value="@transaction?.TransactionType" />
+        <FieldDisplay Label="Transaction Status" Value="@transaction?.Status" />
+        <FieldDisplay Label="Created At" Value="@FormatDateTime(transaction?.CreatedAt)" />
+        <FieldDisplay Label="Updated At" Value="@FormatDateTime(transaction?.UpdatedAt)" />
+        <FieldDisplay Label="Secret Key" Value="@transaction?.SecretKey" />
     </div>
 </div>
 
@@ -75,10 +38,7 @@
                             <div class="card-body">
                                 @foreach (var property in EntityReflectionHelper.GetProperties(record))
                                 {
-                                    <div class="row mb-2">
-                                        <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                        <div class="col-7 col-md-9">@property.GetValue(record)</div>
-                                    </div>
+                                    <FieldDisplay Label="@property.Name" Value="@property.GetValue(record)" LabelClass="text-end fw-bold" />
                                 }
                                 @foreach (var nestedNavigationProperty in EntityReflectionHelper.GetNavigationProperties(record))
                                 {
@@ -93,10 +53,7 @@
                                                     <div class="card-body">
                                                         @foreach (var property in EntityReflectionHelper.GetProperties(nestedRecord))
                                                         {
-                                                            <div class="row mb-1">
-                                                                <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                                                <div class="col-7 col-md-9">@property.GetValue(nestedRecord)</div>
-                                                            </div>
+                                                            <FieldDisplay Label="@property.Name" Value="@property.GetValue(nestedRecord)" LabelClass="text-end fw-bold" />
                                                         }
                                                     </div>
                                                 </div>
@@ -146,8 +103,7 @@
 
     private async Task LoadTransactionAsync()
     {
-        transaction = await _dbContext.Transactions
-            // .Include(t => t.CustomerDeposits)
+        transaction = await DbContext.Transactions
             .Include(t => t.Pin4Payouts)
             .Include(t => t.TransactionErrors)
             .Include(t => t.CryptoPaymentInvoices)
@@ -155,10 +111,11 @@
         StateHasChanged();
     }
 
+    private static string FormatDateTime(DateTime? dateTime) =>
+        dateTime?.ToLocalTime().ToString("MM/dd/yyyy HH:mm") ?? string.Empty;
+
     public void Dispose()
     {
         transaction = null;
     }
-
-
 }

@@ -1,43 +1,19 @@
 @using Microsoft.EntityFrameworkCore
 @using PayTech.BackOffice.Data.Models
-@inject PayTechDbContext _dbContext
+@inject PayTechDbContext DbContext
 
 <div class="card">
     <div class="card-body">
         <h4 class="card-title">Transaction Error Details</h4>
 
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Error ID:</div>
-            <div class="col-7 col-md-9">@transactionError?.ErrorId</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Transaction ID:</div>
-            <div class="col-7 col-md-9">@transactionError?.TransactionId</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Server Error Message:</div>
-            <div class="col-7 col-md-9">@transactionError?.ServerErrorMessage</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Internal Note:</div>
-            <div class="col-7 col-md-9">@transactionError?.InternalNote</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Customer Message:</div>
-            <div class="col-7 col-md-9">@transactionError?.CustomerMessage</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Error DateTime:</div>
-            <div class="col-7 col-md-9">@transactionError?.ErrorDateTime.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Created At:</div>
-            <div class="col-7 col-md-9">@(transactionError?.CreatedAt?.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss") ?? "-")</div>
-        </div>
-        <div class="row">
-            <div class="col-5 col-md-3 text-end">Updated At:</div>
-            <div class="col-7 col-md-9">@(transactionError?.UpdatedAt?.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss") ?? "-")</div>
-        </div>
+        <FieldDisplay Label="Error ID" Value="@transactionError?.ErrorId" />
+        <FieldDisplay Label="Transaction ID" Value="@transactionError?.TransactionId" />
+        <FieldDisplay Label="Server Error Message" Value="@transactionError?.ServerErrorMessage" />
+        <FieldDisplay Label="Internal Note" Value="@transactionError?.InternalNote" />
+        <FieldDisplay Label="Customer Message" Value="@transactionError?.CustomerMessage" />
+        <FieldDisplay Label="Error DateTime" Value="@FormatDateTime(transactionError?.ErrorDateTime)" />
+        <FieldDisplay Label="Created At" Value="@FormatDateTime(transactionError?.CreatedAt)" />
+        <FieldDisplay Label="Updated At" Value="@FormatDateTime(transactionError?.UpdatedAt)" />
     </div>
 </div>
 
@@ -60,10 +36,7 @@
                                 <div class="card-body">
                                     @foreach (var property in EntityReflectionHelper.GetProperties(record))
                                     {
-                                        <div class="row mb-2">
-                                            <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                            <div class="col-7 col-md-9">@property.GetValue(record)</div>
-                                        </div>
+                                        <FieldDisplay Label="@property.Name" Value="@property.GetValue(record)" LabelClass="text-end fw-bold" />
                                     }
                                     @foreach (var nestedNavigationProperty in EntityReflectionHelper.GetNavigationProperties(record))
                                     {
@@ -78,10 +51,7 @@
                                                         <div class="card-body">
                                                             @foreach (var property in EntityReflectionHelper.GetProperties(nestedRecord))
                                                             {
-                                                                <div class="row mb-1">
-                                                                    <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                                                    <div class="col-7 col-md-9">@property.GetValue(nestedRecord)</div>
-                                                                </div>
+                                                                <FieldDisplay Label="@property.Name" Value="@property.GetValue(nestedRecord)" LabelClass="text-end fw-bold" />
                                                             }
                                                         </div>
                                                     </div>
@@ -98,10 +68,7 @@
                                                 <div class="card-body">
                                                     @foreach (var property in EntityReflectionHelper.GetProperties(singleNestedRecord))
                                                     {
-                                                        <div class="row mb-1">
-                                                            <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                                            <div class="col-7 col-md-9">@property.GetValue(singleNestedRecord)</div>
-                                                        </div>
+                                                        <FieldDisplay Label="@property.Name" Value="@property.GetValue(singleNestedRecord)" LabelClass="text-end fw-bold" />
                                                     }
                                                 </div>
                                             </div>
@@ -126,10 +93,7 @@
                         <div class="card-body">
                             @foreach (var property in EntityReflectionHelper.GetProperties(singleRecord))
                             {
-                                <div class="row mb-2">
-                                    <div class="col-5 col-md-3 text-end fw-bold">@property.Name:</div>
-                                    <div class="col-7 col-md-9">@property.GetValue(singleRecord)</div>
-                                </div>
+                                <FieldDisplay Label="@property.Name" Value="@property.GetValue(singleRecord)" LabelClass="text-end fw-bold" />
                             }
                         </div>
                     </div>
@@ -160,22 +124,17 @@
 
     private async Task LoadTransactionErrorAsync()
     {
-        transactionError = await _dbContext.TransactionErrors
+        transactionError = await DbContext.TransactionErrors
             .Include(te => te.Transaction)
             .FirstOrDefaultAsync(te => te.ErrorId == ErrorId);
-    
-        if (transactionError == null)
-        {
-            // Handle the case when no error is found
-            // For example, you could set an error message to display
-        }
-    
         StateHasChanged();
     }
+
+    private static string FormatDateTime(DateTime? dateTime) =>
+        dateTime?.ToLocalTime().ToString("MM/dd/yyyy HH:mm:ss") ?? string.Empty;
 
     public void Dispose()
     {
         transactionError = null;
     }
-
 }

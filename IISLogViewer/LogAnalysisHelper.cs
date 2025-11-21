@@ -1,26 +1,17 @@
 ﻿using System.Globalization;
 using System.Text.RegularExpressions;
 using PayTech.BackOffice.BackOfficeWeb.Controllers;
+using LLMCraftedBlazorSamples.Shared.Models;
 
 namespace PayTech.BackOffice.BackOfficeWeb.Services;
 
 public static class LogAnalysisHelper
 {
     public static string GetRowClass(string entryType) =>
-        entryType switch
-        {
-            "ERR" => "table-danger",
-            "WRN" => "table-warning",
-            _ => ""
-        };
+        LogLevelExtensions.FromShortString(entryType).GetTableClass();
 
     public static string GetBadgeClass(string entryType) =>
-        entryType switch
-        {
-            "ERR" => "bg-danger",
-            "WRN" => "bg-warning text-dark",
-            _ => "bg-info"
-        };
+        LogLevelExtensions.FromShortString(entryType).GetBackgroundClass();
 
     public static IEnumerable<IGrouping<string, string>> GroupLogFilesByMonth(IEnumerable<string> logFiles) =>
         logFiles
@@ -58,18 +49,20 @@ public static class LogAnalysisHelper
 
     public static List<ErrorSummary> GetMostCommonErrors(IEnumerable<LogEntry> logEntries)
     {
+        var errorLevels = new[] { LogLevel.Error.ToShortString(), LogLevel.Warning.ToShortString() };
+
         return logEntries
-            .Where(e => e.Type == "ERR" || e.Type == "WRN")
+            .Where(e => errorLevels.Contains(e.Type))
             .Select(e => new
             {
                 Entry = e,
                 Exception = ExtractExceptionName(e.Message)
             })
             .GroupBy(x => x.Exception)
-            .Select(g => new ErrorSummary 
-            { 
-                ExceptionName = g.Key, 
-                Count = g.Count(), 
+            .Select(g => new ErrorSummary
+            {
+                ExceptionName = g.Key,
+                Count = g.Count(),
                 SampleMessages = g.Select(x => x.Entry.Message).Take(3).ToList()
             })
             .OrderByDescending(e => e.Count)
@@ -120,6 +113,7 @@ public static class LogAnalysisHelper
     public static int GetErrorsInLastHour(IEnumerable<LogEntry> logEntries)
     {
         var oneHourAgo = DateTime.Now.AddHours(-1);
-        return logEntries.Count(e => e.Type == "ERR" && DateTime.Parse(e.Timestamp) >= oneHourAgo);
+        var errorType = LogLevel.Error.ToShortString();
+        return logEntries.Count(e => e.Type == errorType && DateTime.Parse(e.Timestamp) >= oneHourAgo);
     }
 }

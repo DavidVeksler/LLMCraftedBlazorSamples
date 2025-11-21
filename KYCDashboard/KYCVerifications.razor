@@ -8,8 +8,8 @@
 @using PayTech.BackOffice.Data.Types
 
 @rendermode InteractiveServer
-@inject PayTechDbContext _dbContext
-@inject UserDbContext _usersContext
+@inject PayTechDbContext DbContext
+@inject UserDbContext UsersContext
 
 <h3>Customer KYC Verifications</h3>
 
@@ -18,26 +18,26 @@
 
 <div class="row mt-3 mb-5">
     <StatCard Title="Total KYC Verifications" Icon="bi bi-person-check"
-              Value="@(_dbContext.CustomerKycVerifications.Count())" />
+              Value="@(DbContext.CustomerKycVerifications.Count())" />
 
     <StatCard Title="Verifications Today" Icon="bi bi-calendar-check"
-              Value="@(_dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Date == DateTime.Today))"
+              Value="@(DbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Date == DateTime.Today))"
               BackgroundColor="bg-success" />
 
     <StatCard Title="Unique Countries" Icon="bi bi-globe"
-              Value="@(_dbContext.CustomerKycVerifications.Select(k => k.Country).Distinct().Count())"
+              Value="@(DbContext.CustomerKycVerifications.Select(k => k.Country).Distinct().Count())"
               BackgroundColor="bg-info" />
 
     <StatCard Title="Most Common Country" Icon="bi bi-flag"
-              Value="@(_dbContext.CustomerKycVerifications.GroupBy(k => k.Country).ToList().OrderByDescending(g => g.Count()).FirstOrDefault()?.Count() ?? 0)"
+              Value="@(DbContext.CustomerKycVerifications.GroupBy(k => k.Country).ToList().OrderByDescending(g => g.Count()).FirstOrDefault()?.Count() ?? 0)"
               BackgroundColor="bg-warning" TextColor="text-dark" />
 
     <StatCard Title="Avg. Verification Age" Icon="bi bi-clock-history"
-              Value="@((int)_dbContext.CustomerKycVerifications.Where(k => k.CreatedAt.HasValue).Select(k => (DateTime.Now - k.CreatedAt!.Value).Days).DefaultIfEmpty().Average())"
+              Value="@((int)DbContext.CustomerKycVerifications.Where(k => k.CreatedAt.HasValue).Select(k => (DateTime.Now - k.CreatedAt!.Value).Days).DefaultIfEmpty().Average())"
               BackgroundColor="bg-danger" />
 
     <StatCard Title="Unique Customers" Icon="bi bi-person-bounding-box"
-              Value="@(_dbContext.CustomerKycVerifications.Select(k => k.CustomerId).Distinct().Count())"
+              Value="@(DbContext.CustomerKycVerifications.Select(k => k.CustomerId).Distinct().Count())"
               BackgroundColor="bg-secondary" />
 
     <StatCard Title="Monthly Growth Rate" Icon="bi bi-graph-up"
@@ -45,26 +45,26 @@
               BackgroundColor="bg-dark" />
 
     <StatCard Title="Avg. Customer Age" Icon="bi bi-calendar3"
-              Value="@((int)_dbContext.CustomerKycVerifications.Where(k => k.Dob.HasValue).Select(k => (DateTime.Today - k.Dob!.Value.ToDateTime(TimeOnly.MinValue)).Days / 365.25).DefaultIfEmpty().Average())"
+              Value="@((int)DbContext.CustomerKycVerifications.Where(k => k.Dob.HasValue).Select(k => (DateTime.Today - k.Dob!.Value.ToDateTime(TimeOnly.MinValue)).Days / 365.25).DefaultIfEmpty().Average())"
               BackgroundColor="bg-light" TextColor="text-dark" />
 
     <StatCard Title="Duplicate Emails" Icon="bi bi-exclamation-triangle"
-              Value="@(_usersContext.Users.GroupBy(u => u.Email).Count(g => g.Count() > 1))"
+              Value="@(UsersContext.Users.GroupBy(u => u.Email).Count(g => g.Count() > 1))"
               BackgroundColor="bg-warning" TextColor="text-dark"
               OnClick="@(() => ShowDuplicateDetails(DuplicateType.Email))" />
 
     <StatCard Title="Duplicate Phone Numbers" Icon="bi bi-telephone-x"
-              Value="@(_usersContext.Users.GroupBy(u => u.PhoneNumber).Count(g => g.Count() > 1))"
+              Value="@(UsersContext.Users.GroupBy(u => u.PhoneNumber).Count(g => g.Count() > 1))"
               BackgroundColor="bg-warning" TextColor="text-dark"
               OnClick="@(() => ShowDuplicateDetails(DuplicateType.Phone))" />
 
     <StatCard Title="Duplicate IP Addresses" Icon="bi bi-hdd-network"
-              Value="@(_dbContext.CustomerKycVerifications.GroupBy(k => k.IpAddress).Count(g => g.Count() > 1))"
+              Value="@(DbContext.CustomerKycVerifications.GroupBy(k => k.IpAddress).Count(g => g.Count() > 1))"
               BackgroundColor="bg-warning" TextColor="text-dark"
               OnClick="@(() => ShowDuplicateDetails(DuplicateType.IP))" />
 
     <StatCard Title="Failed Verifications" Icon="bi bi-x-circle"
-              Value="@(_dbContext.CustomerKycVerifications.Count(k => k.Status == KycStatus.AMLFailed || k.Status == KycStatus.DocumentationFailed))"
+              Value="@(DbContext.CustomerKycVerifications.Count(k => k.Status == KycStatus.AMLFailed || k.Status == KycStatus.DocumentationFailed))"
               BackgroundColor="bg-danger" OnClick="ShowFailedVerifications" />
 </div>
 
@@ -72,8 +72,8 @@
 
     private int CalculateMonthlyGrowthRate()
     {
-        var thisMonth = _dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.Month && k.CreatedAt.Value.Year == DateTime.Now.Year);
-        var lastMonth = _dbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.AddMonths(-1).Month && k.CreatedAt.Value.Year == DateTime.Now.AddMonths(-1).Year);
+        var thisMonth = DbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.Month && k.CreatedAt.Value.Year == DateTime.Now.Year);
+        var lastMonth = DbContext.CustomerKycVerifications.Count(k => k.CreatedAt.Value.Month == DateTime.Now.AddMonths(-1).Month && k.CreatedAt.Value.Year == DateTime.Now.AddMonths(-1).Year);
         return lastMonth > 0 ? (int)(((double)thisMonth - lastMonth) / lastMonth * 100) : 0;
     }
 
@@ -155,7 +155,7 @@
 
     private async Task<GridDataProviderResult<CustomerKycVerification>> KycVerificationsDataProvider(GridDataProviderRequest<CustomerKycVerification> request)
     {
-        var kycVerifications = _dbContext.CustomerKycVerifications
+        var kycVerifications = DbContext.CustomerKycVerifications
             .Include(t => t.ApplicationUser)
             .OrderByDescending(k => k.UpdatedAt ?? k.CreatedAt)
             .ToList();
@@ -173,7 +173,7 @@
 
     private async Task ShowFailedVerifications()
     {
-        var failedVerifications = _dbContext.CustomerKycVerifications
+        var failedVerifications = DbContext.CustomerKycVerifications
             .Where(k => k.Status == KycStatus.AMLFailed || k.Status == KycStatus.DocumentationFailed)
             .Include(k => k.ApplicationUser)
             .ToList();
@@ -188,7 +188,7 @@
 
     private List<DuplicateItem> GetDuplicateEmails()
     {
-        return _usersContext.Users
+        return UsersContext.Users
             .GroupBy(u => u.Email)
             .Where(g => g.Count() > 1)
             .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })
@@ -197,7 +197,7 @@
 
     private List<DuplicateItem> GetDuplicatePhones()
     {
-        return _usersContext.Users
+        return UsersContext.Users
             .GroupBy(u => u.PhoneNumber)
             .Where(g => g.Count() > 1)
             .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })
@@ -206,7 +206,7 @@
 
     private List<DuplicateItem> GetDuplicateIPs()
     {
-        return _dbContext.CustomerKycVerifications
+        return DbContext.CustomerKycVerifications
             .GroupBy(k => k.IpAddress)
             .Where(g => g.Count() > 1)
             .Select(g => new DuplicateItem { Value = g.Key, Count = g.Count() })

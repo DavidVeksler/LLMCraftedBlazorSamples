@@ -3,6 +3,7 @@ using BitPay;
 using BitPay.Models;
 using BitPay.Models.Invoice;
 using BitPay.Models.Rate;
+using LLMCraftedBlazorSamples.Shared;
 using Microsoft.Extensions.Configuration;
 using PayTech.BackOffice.Data.Authentication;
 using Environment = BitPay.Environment;
@@ -40,14 +41,11 @@ public class BitPayClient
         {
             OrderId = invoiceRequest.OrderId,
             ItemDesc = invoiceRequest.Description,
-            NotificationEmail = "systems@paytech.systems",
-
+            NotificationEmail = AppConstants.Email.SystemsEmail,
             FullNotifications = true,
-            ExtendedNotifications =
-                true, // https://developer.bitpay.com/reference/notifications-invoices#extended-ipn-format
+            ExtendedNotifications = true, // https://developer.bitpay.com/reference/notifications-invoices#extended-ipn-format
             TransactionSpeed = "fast",
-            NotificationUrl =
-                "https://api-test.test.paytech.systems/api/BitPayWebhook", // TODO: Change to the correct URL
+            NotificationUrl = AppConstants.Api.BitPayWebhookUrl,
             AutoRedirect = true,
             RedirectUrl = dashboardUrl + "?action=bitpay_success",
             CloseURL = dashboardUrl + "?action=bitpay_close"
